@@ -1,0 +1,391 @@
+
+import React, { useEffect, useState, useCallback } from 'react';
+import Layout from '../components/Layout';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MockService } from '../services/mockService';
+import { User, Neighborhood, UserRole, Camera } from '../types';
+import L from 'leaflet';
+import { useAuth } from '@/auth/context';
+import { useNavigate } from 'react-router-dom';
+import { Video, MapPin, Globe, Lock, AlertTriangle, Wrench } from 'lucide-react';
+import { UpgradeModal } from '@/components/UpgradeModal';
+import { supabase } from '../lib/supabaseClient';
+import { openCameraPopup } from '@/lib/playerUtils';
+
+// Fix Leaflet Default Icon in React using CDN URLs
+const iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
+const shadowUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: iconUrl,
+    shadowUrl: shadowUrl,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
+
+// Custom Camera Icon for map markers
+const CameraIcon = L.divIcon({
+    className: 'custom-camera-marker',
+    html: `<div style="background-color: #00FF66; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(0,255,102,0.6); border: 2px solid #000;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/></svg>
+           </div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
+});
+
+// Custom Icon for Neighborhood Centers
+const NeighborhoodIcon = L.divIcon({
+    className: 'custom-hood-marker',
+    html: `<div style="background-color: #3b82f6; width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 10px rgba(59, 130, 246, 0.6); border: 2px solid #fff;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+           </div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+});
+
+// Custom MOTO Icon for SCR markers (Yellow/Neon)
+const MotoIcon = L.divIcon({
+    className: 'custom-moto-marker',
+    html: `<div style="background-color: #EAB308; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 15px rgba(234, 179, 8, 0.8); border: 2px solid #000;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h-5a1 1 0 0 0-1 1v4h12V7a1 1 0 0 0-1-1z"/><path d="M12 11v6"/><path d="M5.5 17.5h13"/></svg>
+           </div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
+});
+
+// SATELLITE ONLY CONFIGURATION
+const SATELLITE_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const SATELLITE_ATTRIBUTION = 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community';
+
+const MapResizer = () => {
+    const map = useMap();
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            map.invalidateSize();
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [map]);
+    return null;
+};
+
+const MapBoundsSetter: React.FC<{ cameras: Camera[] }> = ({ cameras }) => {
+    const map = useMap();
+    useEffect(() => {
+        if (cameras && cameras.length > 0) {
+            const points = cameras.filter(c => c.lat !== undefined && c.lng !== undefined).map(c => [c.lat!, c.lng!] as [number, number]);
+            if (points.length > 0) {
+                const bounds = L.latLngBounds(points);
+                // Use a slightly larger padding and a sensible maxZoom to focus
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+            }
+        }
+    }, [cameras, map]);
+    return null;
+};
+
+const CameraPopupContent: React.FC<{ cam: Camera; onUpgrade: () => void }> = ({ cam, onUpgrade }) => {
+  const [showLive, setShowLive] = useState(false);
+  const { user } = useAuth();
+  const isFreeResident = false;
+
+  return (
+    <div className="min-w-[280px]">
+      <div className="flex items-center gap-2 mb-1">
+          <Video size={16} />
+          <strong className="text-sm">Câmera: {cam.name}</strong>
+      </div>
+      <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] text-green-600 font-bold animate-pulse">● EM OPERAÇÃO</span>
+          <span className="text-[9px] text-gray-400 font-mono">{cam.lat?.toFixed(4)}, {cam.lng?.toFixed(4)}</span>
+      </div>
+      
+      <div className="w-full aspect-video bg-black rounded-lg overflow-hidden border border-gray-200 shadow-inner mt-1 relative">
+          {showLive ? (
+              isFreeResident ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 px-4 text-center">
+                    <Lock className="text-atalaia-neon/40 mb-2" size={24} />
+                    <h4 className="text-white font-bold text-[10px] uppercase mb-1">Acesso Bloqueado</h4>
+                    <p className="text-[8px] text-gray-500 mb-2">
+                        Requer assinatura para monitorar.
+                    </p>
+                    <div className="flex flex-col gap-1 w-full">
+                        <button 
+                            onClick={onUpgrade}
+                            className="bg-yellow-600 text-white text-[8px] font-black py-1 rounded uppercase"
+                        >
+                            Plano Família (R$ 29,90)
+                        </button>
+                        <button 
+                            onClick={onUpgrade}
+                            className="bg-atalaia-neon text-black text-[8px] font-black py-1 rounded uppercase"
+                        >
+                            Plano Prêmio (R$ 49,90)
+                        </button>
+                    </div>
+                </div>
+              ) : !cam.iframeCode || cam.iframeCode.trim() === '' ? (
+                  <div className="w-full h-full relative flex flex-col items-center justify-center bg-[#0a0a0a] text-center overflow-hidden p-2">
+                      {cam.maintenancePhotoUrl ? (
+                          <>
+                             <img src={cam.maintenancePhotoUrl} alt="Manutenção" className="absolute inset-0 w-full h-full object-cover" />
+                          </>
+                      ) : (
+                          <>
+                              <Wrench className="text-gray-500 mb-1 animate-pulse" size={24} />
+                              <h4 className="text-[10px] font-bold text-gray-300 uppercase tracking-widest">Em Manutenção</h4>
+                              <p className="text-[8px] text-gray-500 mt-1 max-w-[150px]">Em breve estará transmitindo.</p>
+                          </>
+                      )}
+                  </div>
+              ) : cam.iframeCode.trim().startsWith('<') ? (
+                  <iframe 
+                      srcDoc={`
+                          <html>
+                              <head>
+                                  <style>
+                                      body { margin: 0; padding: 0; background: black; overflow: hidden; display: flex; align-items: center; justify-content: center; height: 100vh; }
+                                      video, iframe { width: 100%; height: 100%; object-fit: contain; border: none; }
+                                  </style>
+                              </head>
+                              <body>${cam.iframeCode}</body>
+                          </html>
+                      `}
+                      className="w-full h-full border-0 pointer-events-none"
+                          allowFullScreen
+                  />
+              ) : (cam.iframeCode.trim().toLowerCase().startsWith('http://') || (cam.iframeCode.trim().startsWith('<') && cam.iframeCode.toLowerCase().includes('src="http://'))) ? (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 border border-amber-500/20 px-4 text-center">
+                    <AlertTriangle className="text-amber-500 mb-1" size={20} />
+                    <h4 className="text-white font-bold text-[9px] uppercase mb-1">Conteúdo Inseguro</h4>
+                    <p className="text-[7px] text-gray-500 leading-tight mb-2">
+                        O navegador bloqueia esse link <code className="text-amber-500">http</code> por segurança dentro do mapa.
+                    </p>
+                    <button 
+                        onClick={() => openCameraPopup(cam.id, cam.name, cam.iframeCode)}
+                        className="px-2 py-1 bg-atalaia-neon border border-black rounded-md text-[8px] font-black text-black hover:scale-105 transition-transform shadow-[0_0_10px_rgba(0,255,102,0.4)]"
+                    >
+                        ABRIR MONITOR
+                    </button>
+                </div>
+              ) : (
+                  <div className="relative w-full h-full group/map-cam">
+                      <iframe 
+                          src={cam.iframeCode} 
+                          title={cam.name}
+                          className="w-full h-full border-0 pointer-events-none"
+                          allowFullScreen 
+                          referrerPolicy="no-referrer"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/map-cam:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                          <button 
+                              onClick={() => openCameraPopup(cam.id, cam.name, cam.iframeCode)}
+                              className="pointer-events-auto bg-atalaia-neon text-black px-2 py-1 rounded text-[8px] font-black uppercase shadow-lg transform active:scale-95 transition-all"
+                          >
+                              Abrir Monitor
+                          </button>
+                      </div>
+                  </div>
+              )
+          ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100">
+                  {cam.locationPhotoUrl ? (
+                      <img src={cam.locationPhotoUrl} className="w-full h-full object-cover" alt="Local do Poste" />
+                  ) : (
+                      <div className="text-center p-4">
+                          <MapPin className="mx-auto text-gray-300 mb-2" size={24} />
+                          <p className="text-gray-400 text-[10px] font-bold uppercase">Foto do poste não disponível</p>
+                      </div>
+                  )}
+              </div>
+          )}
+          
+          <button 
+            onClick={() => setShowLive(!showLive)}
+            className="absolute bottom-2 right-2 bg-black/60 hover:bg-black/80 text-white text-[9px] font-bold px-2 py-1 rounded backdrop-blur-sm border border-white/20 transition-all z-10"
+          >
+            {showLive ? 'Ver Foto do Poste' : (isFreeResident ? 'Desbloquear Câmera' : 'Ver Câmera ao Vivo')}
+          </button>
+      </div>
+      <div className="mt-2 text-[9px] text-gray-500 italic text-center">
+          {showLive ? (isFreeResident ? '🔒 Plano Premium Requerido' : 'Monitoramento em tempo real Atalaia') : 'Localização física do poste de monitoramento'}
+      </div>
+    </div>
+  );
+};
+
+const MapPage: React.FC = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && user.role === UserRole.RESIDENT) {
+        navigate('/dashboard');
+    }
+  }, [user, navigate]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
+  const [cameras, setCameras] = useState<Camera[]>([]);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
+  const centerPos: [number, number] = user?.lat && user?.lng ? [user.lat, user.lng] : [-28.7100, -49.3000];
+
+  const roleNames: Record<string, string> = {
+    ADMIN: 'Administrador',
+    INTEGRATOR: 'Integrador',
+    SCR: 'Motovigia',
+    RESIDENT: 'Morador'
+  };
+
+  const fetchData = useCallback(async () => {
+      const allUsers = await MockService.getUsers();
+      const hoodsData = await MockService.getNeighborhoods();
+
+      let filteredHoods: Neighborhood[] = [];
+      let filteredUsers: User[] = [];
+
+      if (user?.role === UserRole.ADMIN) {
+          filteredHoods = hoodsData;
+          filteredUsers = allUsers;
+      } else if (user?.role === UserRole.INTEGRATOR) {
+          filteredHoods = hoodsData.filter(h => h.integratorId === user.id);
+          const myHoodIds = new Set(filteredHoods.map(h => h.id));
+          filteredUsers = allUsers.filter(u => u.integratorId === user.id || (u.neighborhoodId && myHoodIds.has(u.neighborhoodId)));
+      } else {
+          filteredHoods = hoodsData.filter(h => h.id === user?.neighborhoodId || h.id === user?.secondaryNeighborhoodId);
+          filteredUsers = allUsers.filter(u => u.neighborhoodId === user?.neighborhoodId || u.secondaryNeighborhoodId === user?.neighborhoodId);
+      }
+
+      setNeighborhoods(filteredHoods);
+      setUsers(filteredUsers);
+
+      // Fetch All System Cameras and filter by integrator's neighborhoods
+      const allCameras = await MockService.getAllSystemCameras();
+      const myHoodIds = new Set(filteredHoods.map(h => h.id));
+      const filteredCameras = user?.role === UserRole.ADMIN
+          ? allCameras
+          : allCameras.filter(c => myHoodIds.has(c.neighborhoodId));
+      setCameras(filteredCameras);
+  }, [user]);
+
+  useEffect(() => {
+    fetchData();
+
+    const subProfiles = MockService.subscribeToTable('profiles', fetchData);
+    const subHoods = MockService.subscribeToTable('neighborhoods', fetchData);
+    const subCameras = MockService.subscribeToTable('cameras', fetchData);
+
+    return () => {
+        supabase.removeChannel(subProfiles);
+        supabase.removeChannel(subHoods);
+        supabase.removeChannel(subCameras);
+    };
+  }, [fetchData]);
+
+  return (
+    <Layout>
+      <div className="h-[calc(100vh-100px)] flex flex-col">
+        <div className="mb-4 flex justify-between items-end">
+            <div>
+                <h1 className="text-3xl font-bold text-white">Mapa de Câmeras</h1>
+                <p className="text-gray-400">Visualize a rede de proteção e câmeras em tempo real.</p>
+            </div>
+            {/* Satellite Badge Indicator */}
+            <div className="flex items-center gap-2 px-3 py-1 bg-blue-900/30 border border-blue-500/30 rounded-lg text-blue-300 text-xs font-bold uppercase tracking-wider">
+                <Globe size={14} /> Modo Satélite
+            </div>
+        </div>
+
+        <div className="flex-1 rounded-xl overflow-hidden border border-atalaia-border shadow-2xl relative z-0 group">
+             <MapContainer 
+                center={centerPos} 
+                zoom={14} 
+                style={{ height: '100%', width: '100%', background: '#0a0a0a' }}
+                scrollWheelZoom={true}
+            >
+                <MapResizer />
+                <MapBoundsSetter cameras={cameras} />
+                {/* FORCED SATELLITE LAYER */}
+                <TileLayer
+                    attribution={SATELLITE_ATTRIBUTION}
+                    url={SATELLITE_URL}
+                />
+                <TileLayer
+                    url='https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'
+                />
+                <TileLayer
+                    url='https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}'
+                />
+
+                {/* User Markers */}
+                {users.map((u) => (
+                    u.lat && u.lng && (
+                        <Marker 
+                            key={`user-${u.id}`} 
+                            position={[u.lat, u.lng]}
+                            icon={u.role === UserRole.SCR ? MotoIcon : DefaultIcon} // SCR gets Moto Icon
+                        >
+                            <Popup className="text-black">
+                                <strong className="block text-sm mb-1">{u.name}</strong>
+                                <span className={`text-xs uppercase px-1 rounded ${u.role === UserRole.SCR ? 'bg-yellow-400 font-bold' : 'bg-gray-200'}`}>
+                                    {u.role ? roleNames[u.role] : u.role}
+                                </span>
+                                {u.role === UserRole.SCR && (
+                                    <div className="text-[10px] text-gray-500 mt-1 italic">
+                                        Em deslocamento tático
+                                    </div>
+                                )}
+                            </Popup>
+                        </Marker>
+                    )
+                ))}
+
+                {/* Neighborhood Center Markers (Blue) */}
+                {neighborhoods.map((h) => (
+                    h.lat && h.lng && (
+                        <Marker key={`hood-${h.id}`} position={[h.lat, h.lng]} icon={NeighborhoodIcon}>
+                             <Popup className="text-black">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <MapPin size={16} />
+                                    <strong className="text-sm">Sistema: {h.name}</strong>
+                                </div>
+                                <span className="text-xs text-blue-600 font-medium">Ponto Central / Info</span>
+                            </Popup>
+                        </Marker>
+                    )
+                ))}
+
+                {/* Individual Camera Markers (Green) - NEW */}
+                {cameras.map((cam) => (
+                    cam.lat && cam.lng && (
+                        <Marker key={`cam-${cam.id}`} position={[cam.lat, cam.lng]} icon={CameraIcon}>
+                             <Popup className="text-black" minWidth={300}>
+                                <CameraPopupContent cam={cam} onUpgrade={() => setShowUpgradeModal(true)} />
+                             </Popup>
+                        </Marker>
+                    )
+                ))}
+
+            </MapContainer>
+
+            {/* Overlay Legend */}
+            <div className="absolute bottom-6 left-6 bg-black/80 backdrop-blur-md p-4 rounded-lg border border-white/10 z-[1000] text-xs pointer-events-none">
+                <h4 className="font-bold text-white mb-2 uppercase">Legenda</h4>
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 rounded-full bg-atalaia-neon border border-black flex items-center justify-center shadow-[0_0_5px_rgba(0,255,102,0.5)]">
+                             <div className="w-1 h-1 bg-black rounded-full" />
+                        </div>
+                        <span className="text-gray-300">Câmeras</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+      </div>
+      <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+    </Layout>
+  );
+};
+
+export default MapPage;
