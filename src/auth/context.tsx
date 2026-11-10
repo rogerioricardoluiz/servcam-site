@@ -269,6 +269,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           singlePlanPrice,
           hasCameraRental,
           cameraRentalDetails,
+          billingAuthorizationService: profile.billing_authorization_service || profile.billingAuthorizationService || undefined,
+          additionalNeighborhoodIds: profile.additional_neighborhood_ids || profile.additionalNeighborhoodIds || undefined,
           promoActive: profile.promo_active === true,
           promoStart: profile.promo_start,
           promoEnd: profile.promo_end,
