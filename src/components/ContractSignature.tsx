@@ -455,6 +455,7 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
       localStorage.setItem(`atalaia_contract_signed_${user.id}`, JSON.stringify(payload));
       setSignatureRecord(payload);
       setLoading(false);
+      MockService.notifyContractSigned(user, payload).catch(() => {});
       if (onSignComplete) {
         onSignComplete(payload);
       }
@@ -872,7 +873,7 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
   };
 
   return (
-    <div id="contrato-adesao-morador" className="print:bg-white print:text-black">
+    <div id="contrato-adesao-cliente" className="print:bg-white print:text-black">
       <style>{`
         @media print {
           /* Clean page setup */
@@ -887,13 +888,13 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
           }
           
           /* Force visibility of the contract module */
-          #contrato-adesao-morador,
-          #contrato-adesao-morador * {
+          #contrato-adesao-cliente,
+          #contrato-adesao-cliente * {
             visibility: visible !important;
           }
           
           /* Position contract perfectly at the top left of the blank paper */
-          #contrato-adesao-morador {
+          #contrato-adesao-cliente {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
@@ -916,10 +917,10 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
           }
 
           /* Force high-contrast document texts and pure white card bounds */
-          #contrato-adesao-morador .bg-green-950\\/10,
-          #contrato-adesao-morador .bg-black\\/40,
-          #contrato-adesao-morador .bg-\\[\\#030303\\],
-          #contrato-adesao-morador .bg-\\[\\#040404\\] {
+          #contrato-adesao-cliente .bg-green-950\\/10,
+          #contrato-adesao-cliente .bg-black\\/40,
+          #contrato-adesao-cliente .bg-\\[\\#030303\\],
+          #contrato-adesao-cliente .bg-\\[\\#040404\\] {
             background: #ffffff !important;
             background-color: #ffffff !important;
             border-color: #e4e4e7 !important;
@@ -927,7 +928,7 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
           }
 
           /* Style the digital trace audit trail box cleanly */
-          #contrato-adesao-morador .bg-black\\/40 {
+          #contrato-adesao-cliente .bg-black\\/40 {
             background: #f4f4f5 !important;
             background-color: #f4f4f5 !important;
             border: 1px solid #e4e4e7 !important;
@@ -936,53 +937,53 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
           }
 
           /* Ensure dark biometric signature seal displays perfectly */
-          #contrato-adesao-morador .bg-\\[\\#0c0c0c\\] {
+          #contrato-adesao-cliente .bg-\\[\\#0c0c0c\\] {
             background: #18181b !important;
             background-color: #18181b !important;
             border-color: #3f3f46 !important;
           }
 
           /* Clean border lines */
-          #contrato-adesao-morador .border,
-          #contrato-adesao-morador .border-b,
-          #contrato-adesao-morador .border-t {
+          #contrato-adesao-cliente .border,
+          #contrato-adesao-cliente .border-b,
+          #contrato-adesao-cliente .border-t {
             border-color: #e2e8f0 !important;
           }
 
           /* High density rich black typography */
-          #contrato-adesao-morador h3,
-          #contrato-adesao-morador h4,
-          #contrato-adesao-morador p,
-          #contrato-adesao-morador span,
-          #contrato-adesao-morador li,
-          #contrato-adesao-morador div {
+          #contrato-adesao-cliente h3,
+          #contrato-adesao-cliente h4,
+          #contrato-adesao-cliente p,
+          #contrato-adesao-cliente span,
+          #contrato-adesao-cliente li,
+          #contrato-adesao-cliente div {
             color: #000000 !important;
           }
 
           /* Standardize subtexts for perfect gray-scaling */
-          #contrato-adesao-morador .text-gray-500,
-          #contrato-adesao-morador .text-zinc-500,
-          #contrato-adesao-morador .text-gray-400 {
+          #contrato-adesao-cliente .text-gray-500,
+          #contrato-adesao-cliente .text-zinc-500,
+          #contrato-adesao-cliente .text-gray-400 {
             color: #4b5563 !important;
           }
 
           /* Elegant highlight colored states */
-          #contrato-adesao-morador .text-\\[\\#00ff66\\],
-          #contrato-adesao-morador .text-atalaia-neon {
+          #contrato-adesao-cliente .text-\\[\\#00ff66\\],
+          #contrato-adesao-cliente .text-atalaia-neon {
             color: #047857 !important; /* Premium dark-emerald */
             font-weight: 700 !important;
           }
 
           /* Stamp badges */
-          #contrato-adesao-morador .bg-green-500\\/10 {
+          #contrato-adesao-cliente .bg-green-500\\/10 {
             background-color: #f0fdf4 !important;
             color: #166534 !important;
             border: 1px solid #bbf7d0 !important;
           }
 
           /* Force full contract scroll bodies to print inline, preventing scroll-clipping */
-          #contrato-adesao-morador .max-h-\\[250px\\],
-          #contrato-adesao-morador .overflow-y-auto {
+          #contrato-adesao-cliente .max-h-\\[250px\\],
+          #contrato-adesao-cliente .overflow-y-auto {
             max-height: none !important;
             overflow-y: visible !important;
           }
@@ -1495,7 +1496,7 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
                   className="rounded bg-zinc-900 border-white/10 text-atalaia-neon focus:ring-atalaia-neon/40 h-4 w-4"
                 />
                 <span className="text-[11px] text-zinc-400 select-none group-hover:text-white transition-colors">
-                  Declaro que li e aceito integralmente os termos do contrato de adesão Atalaia.
+                  Declaro que li e aceito integralmente os termos do contrato de prestação de serviços ServCam.
                 </span>
               </label>
 

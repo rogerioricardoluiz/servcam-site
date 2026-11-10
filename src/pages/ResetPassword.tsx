@@ -62,7 +62,7 @@ const ResetPassword: React.FC = () => {
                     </div>
                     <h1 className="text-2xl font-bold text-white tracking-tight">Nova Senha</h1>
                     <p className="text-gray-500 text-sm mt-2">
-                        Digite sua nova credencial de acesso tático ao Atalaia.
+                        Digite sua nova credencial de acesso à plataforma ServCam.
                     </p>
                 </div>
 

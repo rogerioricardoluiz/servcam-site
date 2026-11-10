@@ -39,7 +39,7 @@ const Documentation: React.FC = () => {
             <div className="lg:hidden fixed top-0 left-0 w-full bg-[#0a0a0a] border-b border-white/10 z-50 px-4 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <ShieldCheck className="text-atalaia-neon" size={24} />
-                    <span className="font-bold text-white">Manual Atalaia</span>
+                    <span className="font-bold text-white">Manual ServCam</span>
                 </div>
                 <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-white">
                     {mobileMenuOpen ? <X /> : <Menu />}
@@ -210,7 +210,7 @@ const Documentation: React.FC = () => {
                         </h2>
                         <div className="bg-[#111] p-6 rounded-xl border border-green-500/20">
                             <p className="mb-4">
-                                O Atalaia possui um "Robô Guardião" que envia mensagens automáticas para o seu WhatsApp.
+                                O ServCam possui um sistema automatizado que envia notificações em tempo real para o seu WhatsApp.
                             </p>
                             <h4 className="font-bold text-white mb-2">Quando você recebe mensagem?</h4>
                             <ul className="list-disc list-inside space-y-2 text-sm text-gray-400">

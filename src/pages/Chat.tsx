@@ -292,7 +292,7 @@ const Chat: React.FC = () => {
           </div>
           <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">Canal Exclusivo Cliente ↔ Integrador</h2>
           <p className="text-gray-400 text-sm sm:text-base leading-relaxed mb-6">
-            O chat direto foi desenvolvido exclusivamente para atendimento e suporte técnico individualizado entre os clientes (moradores) e suas respectivas empresas integradoras credenciadas.
+            O chat direto foi desenvolvido exclusivamente para atendimento e suporte técnico individualizado entre os clientes e suas respectivas empresas integradoras credenciadas.
           </p>
           <div className="p-4 rounded-xl bg-black/60 border border-white/10 text-xs text-gray-400 font-mono inline-block">
             Perfil logado: {user?.role || 'Acesso restrito'} • Para atendimento operacional, utilize a Central de Ocorrências ou WhatsApp.

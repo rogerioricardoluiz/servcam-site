@@ -532,7 +532,7 @@ const Cameras: React.FC = () => {
 
           const createdHood = await MockService.createNeighborhood(
               newHoodName.trim(),
-              newHoodDescription.trim() || 'Monitoramento integrado Atalaia.',
+              newHoodDescription.trim() || 'Monitoramento integrado ServCam.',
               '',
               targetIntegratorId,
               targetIntegratorName
@@ -726,7 +726,7 @@ const Cameras: React.FC = () => {
       try {
           const fileUrl = await fileToDataURL(file);
           await MockService.updateRecordingRequestStatus(requestId, 'COMPLETED', fileUrl);
-          alert('Gravação enviada com sucesso! O status foi alterado para concluído e o morador poderá baixar o arquivo.');
+          alert('Gravação enviada com sucesso! O status foi alterado para concluído e o cliente poderá baixar o arquivo.');
           setUploadingForRequestId(null);
           setRecordingFileName('');
           setRecordingFileBase64('');
@@ -1455,7 +1455,7 @@ const Cameras: React.FC = () => {
                                     <Input label="Link do Player (HTTPS)" value={newPlayerUrl} onChange={e => setNewPlayerUrl(e.target.value)} placeholder="https://..." />
                                     
                                     <div className="space-y-1.5 pt-1">
-                                        <Input label="Gerador de Link RTMP" value={newRtmpUrl} onChange={e => setNewRtmpUrl(e.target.value)} placeholder="rtmp://servcam.alienmonitoramento.com.br/live/..." />
+                                        <Input label="Gerador de Link RTMP" value={newRtmpUrl} onChange={e => setNewRtmpUrl(e.target.value)} placeholder="rtmp://painel.servcam.alienmonitoramento.com.br/live/..." />
                                         <div className="flex gap-2 pt-1">
                                             <Button type="button" onClick={() => {
                                                 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -1463,7 +1463,7 @@ const Cameras: React.FC = () => {
                                                 for (let i = 0; i < 24; i++) {
                                                     randomCode += chars.charAt(Math.floor(Math.random() * chars.length));
                                                 }
-                                                const rtmpUrl = `rtmp://servcam.alienmonitoramento.com.br/live/${randomCode}`;
+                                                const rtmpUrl = `rtmp://painel.servcam.alienmonitoramento.com.br/live/${randomCode}`;
                                                 setNewRtmpUrl(rtmpUrl);
                                             }} className="text-[10px] py-1 px-3 h-8 bg-zinc-800 hover:bg-zinc-700 text-white font-bold" variant="secondary">
                                                 🔄 Gerar RTMP
@@ -1625,7 +1625,7 @@ const Cameras: React.FC = () => {
 
               <form onSubmit={handleSendSupport} className="p-6 space-y-4">
                 <p className="text-xs text-gray-400 font-medium">
-                  Descreva o problema que está ocorrendo com seus equipamentos ou sistema. Um técnico certificado Atalaia será designado para ajudar.
+                  Descreva o problema que está ocorrendo com seus equipamentos ou sistema. Um técnico certificado ServCam será designado para ajudar.
                 </p>
                 
                 <div className="space-y-2">
@@ -1692,7 +1692,7 @@ const Cameras: React.FC = () => {
                             <span className="text-[10px] text-atalaia-neon font-mono bg-atalaia-neon/10 border border-atalaia-neon/20 px-2 py-0.5 rounded">ONLINE</span>
                         </h2>
                         <p className="text-[10px] text-gray-400 mt-0.5 animate-pulse">
-                            Sistema: <span className="text-atalaia-neon font-semibold uppercase">{neighborhoods.find(h => h.id === selectedCameraForModal.neighborhoodId)?.name || 'Atalaia'}</span>
+                            Sistema: <span className="text-atalaia-neon font-semibold uppercase">{neighborhoods.find(h => h.id === selectedCameraForModal.neighborhoodId)?.name || 'ServCam'}</span>
                         </p>
                     </div>
                 </div>
@@ -2126,7 +2126,7 @@ const Cameras: React.FC = () => {
                     )}
                   </div>
                 ) : activeRecordingTab === 'new' ? (
-                  /* VISTA MORADOR: CRIAR SOLICITAÇÃO */
+                  /* VISTA CLIENTE: CRIAR SOLICITAÇÃO */
                   <form onSubmit={handleCreateRecordingRequest} className="space-y-5">
                     <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-4 flex gap-3">
                       <Info size={18} className="text-emerald-400 shrink-0 mt-0.5" />
@@ -2335,7 +2335,7 @@ const Cameras: React.FC = () => {
                     </div>
                   </form>
                 ) : (
-                  /* VISTA MORADOR: LISTA DE SOLICITAÇÕES */
+                  /* VISTA CLIENTE: LISTA DE SOLICITAÇÕES */
                   <div className="space-y-4">
                     {recordingRequests.filter(r => r.userId === user?.id).length === 0 ? (
                       <div className="text-center py-12 border border-dashed border-white/5 rounded-2xl bg-black/20">
@@ -2440,7 +2440,7 @@ const Cameras: React.FC = () => {
 
               {/* Footer */}
               <div className="p-4 bg-zinc-900 border-t border-white/5 flex items-center justify-between text-[10px] text-zinc-500 font-bold">
-                <span>Atalaia Tecnologia Inteligente de Monitoramento Cooperativo © 2026</span>
+                <span>ServCam Tecnologia Inteligente de Monitoramento Cooperativo © 2026</span>
                 <span>Câmeras do Bairro</span>
               </div>
             </motion.div>

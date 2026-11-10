@@ -1158,7 +1158,7 @@ const Profile: React.FC = () => {
                                                             </span>
                                                         </div>
                                                         <p className="text-[10px] text-zinc-400">
-                                                            Seus clientes e moradores vinculados visualizam automaticamente este padrão de cores ao acessar o painel.
+                                                            Seus clientes vinculados visualizam automaticamente este padrão de cores ao acessar o painel.
                                                         </p>
                                                         <div className="pt-2 border-t border-white/5 flex items-center justify-between">
                                                             <span className="text-[10px] font-bold text-zinc-300">
@@ -1238,7 +1238,7 @@ const Profile: React.FC = () => {
                                         </span>
                                     </div>
                                     <p className="text-[11px] text-zinc-400">
-                                        Envie este link direto para os seus clientes e moradores. A página já abre personalizada com a marca da sua empresa e com o código de cor RGB escolhido.
+                                        Envie este link direto para os seus clientes. A página já abre personalizada com a marca da sua empresa e com o código de cor RGB escolhido.
                                     </p>
                                     <div className="flex items-center gap-2 pt-1 flex-wrap sm:flex-nowrap">
                                         <input 
@@ -1408,7 +1408,7 @@ const Profile: React.FC = () => {
                                         </span>
                                     </div>
                                     <p className="text-[11px] text-zinc-400 leading-relaxed">
-                                        Escreva aqui observações, termos locais ou garantias específicas da sua empresa. Este texto será inserido automaticamente como a <strong>Cláusula 16</strong> no contrato de adesão assinado por todos os seus clientes e moradores vinculados.
+                                        Escreva aqui observações, termos locais ou garantias específicas da sua empresa. Este texto será inserido automaticamente como a <strong>Cláusula 16</strong> no contrato de prestação de serviços assinado por todos os seus clientes vinculados.
                                     </p>
                                     <textarea
                                         rows={3}
@@ -1463,7 +1463,7 @@ const Profile: React.FC = () => {
                             Dispositivos Conectados
                         </h3>
                         <p className="text-[11px] text-zinc-500 mt-1">
-                            Monitore e encerre as sessões táticas ativas no Atalaia. Uso compartilhado é bloqueado automaticamente para auditar a integridade das câmeras.
+                            Monitore e encerre as sessões ativas no ServCam. O acesso simultâneo é gerenciado para garantir a integridade e segurança do sistema.
                         </p>
                     </div>
                     {sessions.length > 1 && (

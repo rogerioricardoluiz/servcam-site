@@ -105,7 +105,7 @@ export const SessionService = {
           const numbers = [localStorage.getItem('user_last_phone') || ''];
           if (numbers[0]) {
             supabase.functions.invoke('send-alert', {
-              body: { message: `*Atalaia Segurança*:\n${body}`, numbers }
+              body: { message: `*Segurança ServCam*:\n${body}`, numbers }
             }).catch(() => {});
           }
         }
@@ -141,7 +141,7 @@ export const SessionService = {
         const fullUser = userProfiles.find(u => u.id === userId);
         
         if (fullUser?.phone) {
-          const body = `*Segurança Atalaia*\n\nNovo acesso detectado em sua conta!\nDispositivo: ${os} (${browser})\nIP: ${ipAddress}\nData/Hora: ${new Date().toLocaleString('pt-BR')}\n\nSe não foi você, faça login imediatamente para invalidar conexões e contate o suporte.`;
+          const body = `*Segurança ServCam*\n\nNovo acesso detectado em sua conta!\nDispositivo: ${os} (${browser})\nIP: ${ipAddress}\nData/Hora: ${new Date().toLocaleString('pt-BR')}\n\nSe não foi você, faça login imediatamente para invalidar conexões e contate o suporte.`;
           supabase.functions.invoke('send-alert', {
             body: { message: body, numbers: [fullUser.phone] }
           }).catch(() => {});

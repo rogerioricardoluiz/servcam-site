@@ -72,13 +72,25 @@ const MapResizer = () => {
 const MapBoundsSetter: React.FC<{ cameras: Camera[] }> = ({ cameras }) => {
     const map = useMap();
     useEffect(() => {
-        if (cameras && cameras.length > 0) {
-            const points = cameras.filter(c => c.lat !== undefined && c.lng !== undefined).map(c => [c.lat!, c.lng!] as [number, number]);
-            if (points.length > 0) {
-                const bounds = L.latLngBounds(points);
-                // Use a slightly larger padding and a sensible maxZoom to focus
+        if (!cameras || !Array.isArray(cameras) || cameras.length === 0) return;
+        try {
+            const points = cameras
+                .filter(c => typeof c?.lat === 'number' && typeof c?.lng === 'number' && !isNaN(c.lat) && !isNaN(c.lng) && isFinite(c.lat) && isFinite(c.lng))
+                .map(c => [c.lat!, c.lng!] as [number, number]);
+
+            if (points.length === 0) return;
+
+            if (points.length === 1) {
+                map.setView(points[0], Math.max(map.getZoom() || 14, 15));
+                return;
+            }
+
+            const bounds = L.latLngBounds(points);
+            if (bounds && typeof bounds.isValid === 'function' && bounds.isValid()) {
                 map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
             }
+        } catch (err) {
+            console.warn('Erro ao ajustar limites do mapa no MapPage:', err);
         }
     }, [cameras, map]);
     return null;
@@ -209,7 +221,7 @@ const CameraPopupContent: React.FC<{ cam: Camera; onUpgrade: () => void }> = ({ 
           </button>
       </div>
       <div className="mt-2 text-[9px] text-gray-500 italic text-center">
-          {showLive ? (isFreeResident ? '🔒 Plano Premium Requerido' : 'Monitoramento em tempo real Atalaia') : 'Localização física do poste de monitoramento'}
+          {showLive ? (isFreeResident ? '🔒 Plano Premium Requerido' : 'Monitoramento em tempo real ServCam') : 'Localização física do poste de monitoramento'}
       </div>
     </div>
   );
@@ -235,7 +247,7 @@ const MapPage: React.FC = () => {
     ADMIN: 'Administrador',
     INTEGRATOR: 'Integrador',
     SCR: 'Motovigia',
-    RESIDENT: 'Morador'
+    RESIDENT: 'Cliente'
   };
 
   const fetchData = useCallback(async () => {

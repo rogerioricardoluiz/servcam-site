@@ -45,7 +45,7 @@ const Privacy: React.FC = () => {
 
         <Card className="p-8 bg-[#111] border-white/10 space-y-8">
             <p className="text-sm text-gray-400">
-                Sua privacidade é fundamental para a segurança. Esta política descreve como o <strong>Atalaia</strong> coleta, usa e protege suas informações.
+                Sua privacidade é fundamental para a segurança. Esta política descreve como o <strong>ServCam</strong> coleta, usa e protege suas informações.
             </p>
 
             <section>
@@ -107,7 +107,7 @@ const Privacy: React.FC = () => {
         </Card>
 
         <div className="mt-8 text-center text-xs text-gray-500">
-            Dúvidas? Entre em contato via contato@atalaia.com.br
+            Dúvidas? Entre em contato via contato@servcam.com.br
         </div>
       </div>
     </div>

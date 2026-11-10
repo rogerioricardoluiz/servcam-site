@@ -334,7 +334,7 @@ export const FacialScannerModal: React.FC<FacialScannerProps> = ({
     ctx.fill();
 
     // 2. High-precision neon scope ring
-    const color = mode === 'enroll' ? '#00f0ff' : '#0ffa9c'; // Electric Cyan / Atalaia Mint Green
+    const color = mode === 'enroll' ? '#00f0ff' : '#0ffa9c'; // Electric Cyan / Mint Green
     
     // Ambient glowing glass ring behind
     ctx.strokeStyle = mode === 'enroll' ? 'rgba(0, 240, 255, 0.1)' : 'rgba(15, 250, 156, 0.1)';

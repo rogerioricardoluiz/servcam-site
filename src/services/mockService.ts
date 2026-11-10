@@ -1,6 +1,6 @@
 
 import { supabase, isRealSupabase, supabaseUrl, supabaseAnonKey } from '../lib/supabaseClient';
-import { Neighborhood, Alert, ChatMessage, UserRole, User, UserPlan, Notification, ServiceRequest, Camera, SupportTicket, Coupon, RecordingRequest } from '../types';
+import { Neighborhood, Alert, ChatMessage, UserRole, User, UserPlan, Notification, ServiceRequest, Camera, SupportTicket, Coupon, RecordingRequest, WhatsAppAutomation, WhatsAppDispatchLog } from '../types';
 
 const generateUUID = () => {
     if (typeof window !== 'undefined' && window.crypto && window.crypto.randomUUID) {
@@ -85,6 +85,81 @@ const saveLocalCameras = (cameras: Camera[]) => {
     localStorage.setItem('atalaia_local_cameras', JSON.stringify(cameras));
   } catch (err) {
     console.warn("localStorage is not accessible");
+  }
+};
+
+export const DEFAULT_WHATSAPP_AUTOMATIONS: Record<string, WhatsAppAutomation> = {
+  notify_login_user: {
+    key: 'notify_login_user',
+    name: 'Aviso de Segurança de Login (Ao Usuário)',
+    description: 'Envia mensagem no WhatsApp do usuário confirmando o acesso à sua conta na plataforma e informando o integrador responsável.',
+    enabled: true,
+    targetRole: 'ALL',
+    notifyTarget: 'USER',
+    template: '🔒 *Aviso de Segurança - {{integrator}}*\n\nOlá, *{{name}}*! Detectamos um novo acesso à sua conta.\n\n🏢 *Integrador Vinculado:* {{integrator}}\n📱 *Sistema:* {{system}}\n🕒 *Horário:* {{time}} de {{date}}\n🛡️ *Perfil:* {{role}}\n\n_Se você realizou este acesso, desconsidere este aviso. Caso contrário, altere sua senha imediatamente na plataforma._'
+  },
+  notify_login_admin: {
+    key: 'notify_login_admin',
+    name: 'Alerta de Acesso ao Sistema (Para Central / Admin)',
+    description: 'Avisa a central de monitoramento ou administrador sempre que qualquer usuário (Integrador, SCR, Cliente ou Admin) efetua login.',
+    enabled: true,
+    targetRole: 'ALL',
+    notifyTarget: 'ADMIN',
+    template: '🔔 *{{integrator}} - Alerta de Acesso ao Sistema*\n\n👤 *Usuário:* {{name}} ({{role}})\n🏢 *Integrador:* {{integrator}}\n💻 *Sistema:* {{system}}\n📧 *E-mail:* {{email}}\n📞 *Telefone:* {{phone}}\n🏘️ *Bairro:* {{neighborhood}}\n🕒 *Horário:* {{time}} de {{date}}'
+  },
+  notify_register_user: {
+    key: 'notify_register_user',
+    name: 'Boas-vindas em Novo Cadastro (Ao Usuário)',
+    description: 'Envia mensagem de boas-vindas com orientações de uso para o novo usuário recém-cadastrado e integrador vinculado.',
+    enabled: true,
+    targetRole: 'ALL',
+    notifyTarget: 'USER',
+    template: '👋 *Bem-vindo à {{integrator}}!*\n\nOlá *{{name}}*, recebemos o seu cadastro com sucesso!\n\n🏢 *Empresa Integradora:* {{integrator}}\n📋 *Perfil:* {{role}}\n🏘️ *Bairro:* {{neighborhood}}\n\nNossa equipe e o seu integrador credenciado estão validando seu acesso e você receberá uma confirmação assim que sua conta for ativada!'
+  },
+  notify_register_admin: {
+    key: 'notify_register_admin',
+    name: 'Alerta de Novo Cadastro Pendente (Para o Admin)',
+    description: 'Notifica o administrador central e o integrador quando um novo cliente ou parceiro se cadastra na plataforma.',
+    enabled: true,
+    targetRole: 'ALL',
+    notifyTarget: 'ADMIN',
+    template: '🆕 *Novo Cadastro Realizado*\n\nUm novo usuário solicitou acesso à plataforma de monitoramento da *{{integrator}}*:\n\n👤 *Nome:* {{name}}\n🏢 *Integrador:* {{integrator}}\n📧 *E-mail:* {{email}}\n📞 *WhatsApp:* {{phone}}\n🏷️ *Perfil:* {{role}}\n🏘️ *Bairro:* {{neighborhood}}\n🕒 *Data:* {{date}} às {{time}}\n\nAcesse o Painel para aprovar ou revisar o cadastro.'
+  },
+  notify_user_approved: {
+    key: 'notify_user_approved',
+    name: 'Notificação de Cadastro Aprovado (Ao Usuário)',
+    description: 'Envia mensagem parabenizando o usuário e fornecendo instruções e link de acesso após ter seu cadastro aprovado pelo integrador.',
+    enabled: true,
+    targetRole: 'ALL',
+    notifyTarget: 'USER',
+    template: '🎉 *Cadastro Aprovado - {{integrator}}!*\n\nOlá *{{name}}*, ótimas notícias! O seu cadastro como *{{role}}* foi aprovado com sucesso.\n\n🏢 *Integrador Responsável:* {{integrator}}\n🔑 Seu acesso já está liberado! Entre com seu e-mail cadastrado ({{email}}) para acessar as câmeras e o monitoramento em tempo real.\n\n🌐 *Acesse agora:* {{link}}'
+  },
+  notify_sos_alert: {
+    key: 'notify_sos_alert',
+    name: 'Disparo Automático de Botão de Pânico / Alerta SOS',
+    description: 'Dispara alerta de emergência imediato com localização, dados do cliente e integrador para a central e vizinhos cadastrados.',
+    enabled: true,
+    targetRole: 'ALL',
+    notifyTarget: 'BOTH',
+    template: '🚨 *ALERTA DE EMERGÊNCIA - {{integrator}}* 🚨\n\n⚠️ *Botão de Pânico / SOS Acionado!*\n👤 *Cliente:* {{name}}\n🏢 *Operador Local:* {{integrator}}\n🏘️ *Bairro:* {{neighborhood}}\n🕒 *Horário:* {{time}} de {{date}}\n📝 *Ocorrência:* {{details}}\n\n_Atenção: Equipe de segurança e vizinhos, verifiquem o perímetro com cautela!_'
+  },
+  notify_support_ticket: {
+    key: 'notify_support_ticket',
+    name: 'Aviso de Chamado Técnico / Suporte',
+    description: 'Envia notificação à equipe de suporte técnico e integrador quando um chamado é registrado pelo cliente.',
+    enabled: true,
+    targetRole: 'ALL',
+    notifyTarget: 'ADMIN',
+    template: '🎫 *Novo Chamado de Suporte Aberto*\n\n👤 *Solicitante:* {{name}}\n🏢 *Integrador Responsável:* {{integrator}}\n📞 *WhatsApp:* {{phone}}\n🏘️ *Bairro:* {{neighborhood}}\n💬 *Mensagem:* {{details}}\n🕒 *Data/Hora:* {{date}} às {{time}}'
+  },
+  notify_contract_signed: {
+    key: 'notify_contract_signed',
+    name: 'Confirmação de Assinatura de Contrato',
+    description: 'Envia confirmação imediata e orientações de validação após o cliente assinar o contrato na plataforma vinculado ao seu integrador.',
+    enabled: true,
+    targetRole: 'ALL',
+    notifyTarget: 'USER',
+    template: '📜 *Contrato Digital Assinado com Sucesso!*\n\nOlá *{{name}}*! Confirmamos a assinatura digital do seu contrato de prestação de serviços com o integrador *{{integrator}}*.\n\n📅 *Data da Assinatura:* {{date}} às {{time}}\n🏢 *Operador Credenciado:* {{integrator}}\n🛡️ *Validade Jurídica:* Registrado com carimbo de tempo, IP e assinatura eletrônica.\n\nVocê pode visualizar ou baixar a cópia integral em PDF a qualquer momento em seu painel.'
   }
 };
 
@@ -538,8 +613,8 @@ export const MockService = {
     const demoHoods: Neighborhood[] = [
       {
         id: 'hood-demo-1',
-        name: 'Atalaia Central',
-        description: 'Bairro central sob monitoramento integrado Atalaia.',
+        name: 'Centro',
+        description: 'Bairro central sob monitoramento integrado ServCam.',
         iframeUrl: 'about:blank',
         lat: -27.5969,
         lng: -48.5495,
@@ -1203,6 +1278,7 @@ export const MockService = {
     role?: UserRole;
     neighborhoodId?: string;
     secondaryNeighborhoodId?: string;
+    additionalNeighborhoodIds?: string[];
     integratorId?: string;
     integratorName?: string;
     approved?: boolean;
@@ -1293,6 +1369,9 @@ export const MockService = {
           role,
           plan,
           neighborhood_id: sanitizeUUID(payload.neighborhoodId),
+          primary_neighborhood_id: sanitizeUUID(payload.neighborhoodId),
+          secondary_neighborhood_id: safeSecondaryId,
+          additional_neighborhood_ids: payload.additionalNeighborhoodIds || [],
           approved: isApproved,
           can_read: canRead,
           can_edit: canEdit
@@ -1709,6 +1788,7 @@ export const MockService = {
   },
 
   updateUserApproval: async (userId: string, approved: boolean): Promise<void> => {
+    let resolvedProfile: any = null;
     if (typeof window !== 'undefined') {
         const localKey = `atalaia_local_profile_${userId}`;
         const rawProfile = localStorage.getItem(localKey);
@@ -1716,6 +1796,7 @@ export const MockService = {
             const parsed = JSON.parse(rawProfile);
             parsed.approved = approved;
             localStorage.setItem(localKey, JSON.stringify(parsed));
+            resolvedProfile = parsed;
         }
     }
     if (isRealSupabase) {
@@ -1724,10 +1805,13 @@ export const MockService = {
             if (safeId) await supabase.from('profiles').update({ approved }).eq('id', safeId);
         } catch (_) {}
     }
+    if (approved && resolvedProfile) {
+        MockService.notifyUserApproved(resolvedProfile).catch(() => {});
+    }
   },
 
-
   approveUser: async (userId: string): Promise<void> => {
+      let resolvedProfile: any = null;
       if (typeof window !== 'undefined') {
           const targetKey = `atalaia_local_profile_${userId}`;
           const currentStr = localStorage.getItem(targetKey);
@@ -1736,12 +1820,23 @@ export const MockService = {
                   const profileObj = JSON.parse(currentStr);
                   profileObj.approved = true;
                   localStorage.setItem(targetKey, JSON.stringify(profileObj));
+                  resolvedProfile = profileObj;
               } catch (_) {}
           }
       }
       const safeId = sanitizeUUID(userId);
-      if (!isRealSupabase || !safeId) return;
-      await supabase.from('profiles').update({ approved: true }).eq('id', safeId);
+      if (isRealSupabase && safeId) {
+          await supabase.from('profiles').update({ approved: true }).eq('id', safeId);
+          if (!resolvedProfile) {
+              try {
+                  const { data } = await supabase.from('profiles').select('*').eq('id', safeId).maybeSingle();
+                  if (data) resolvedProfile = data;
+              } catch (_) {}
+          }
+      }
+      if (resolvedProfile) {
+          MockService.notifyUserApproved(resolvedProfile).catch(() => {});
+      }
   },
 
   deleteUser: async (id: string): Promise<void> => {
@@ -1791,7 +1886,7 @@ export const MockService = {
             id: 'alert-1',
             type: 'OK' as any,
             userId: 'demo-user',
-            userName: 'Morador Atalaia',
+            userName: 'Cliente ServCam',
             neighborhoodId: 'hood-demo-1',
             timestamp: new Date(),
             message: 'Ronda preventiva de segurança ativa.'
@@ -1842,6 +1937,11 @@ export const MockService = {
             const settings = await MockService.getSettings();
             const hood = await MockService.getNeighborhoodById(safeHoodId);
             const hoodName = hood?.name || 'Bairro';
+            const integratorInfo = await MockService.resolveIntegratorForUser({
+                neighborhoodId: safeHoodId,
+                id: safeUserId,
+                name: alertData.userName
+            });
             
             const typeLabels: Record<string, string> = {
                 'PANIC': '🚨 PÂNICO',
@@ -1850,8 +1950,17 @@ export const MockService = {
                 'OK': '✅ ESTOU BEM'
             };
 
-            const prefix = settings['template_broadcast_prefix'] || '[ATALAIA]';
-            const message = `${prefix} ${typeLabels[alertData.type] || alertData.type}\n\nMorador: ${alertData.userName}\nBairro: ${hoodName}\n${alertData.message ? `Mensagem: ${alertData.message}` : ''}\n\nVerifique o app para mais detalhes.`;
+            const prefix = settings['template_broadcast_prefix'] || '[SERVCAM]';
+            const message = `${prefix} ${typeLabels[alertData.type] || alertData.type}\n\nCliente: ${alertData.userName}\nBairro: ${hoodName}\n🛡️ Integrador: ${integratorInfo.displayName}${alertData.message ? `\nMensagem: ${alertData.message}` : ''}\n\nVerifique o app para mais detalhes.`;
+
+            // Trigger centralized SOS automation trigger
+            MockService.notifySecurityAlert({
+                title: typeLabels[alertData.type] || alertData.type,
+                message: alertData.message || 'Alerta de segurança emitido no setor',
+                type: alertData.type,
+                neighborhoodId: safeHoodId,
+                userName: alertData.userName
+            }).catch(err => console.warn("[WhatsApp SOS Auto] Notice:", err));
 
             // Fetch all phone numbers in the neighborhood
             const { data: profiles, error: profileErr } = await supabase
@@ -1862,11 +1971,12 @@ export const MockService = {
 
             if (!profileErr && profiles && profiles.length > 0) {
                 const numbers = profiles.map(p => p.phone).filter(Boolean) as string[];
+                if (integratorInfo.phone && !numbers.includes(integratorInfo.phone)) {
+                    numbers.push(integratorInfo.phone);
+                }
                 if (numbers.length > 0) {
                     // Dispara em background para não travar a resposta do app
-                    supabase.functions.invoke('send-alert', { 
-                        body: { message, numbers } 
-                    }).catch(err => console.warn("[WhatsApp Broadcast] Notice:", err));
+                    MockService.sendWhatsAppMessage(message, numbers, undefined, undefined, 'Alerta de Segurança (Broadcast)').catch(err => console.warn("[WhatsApp Broadcast] Notice:", err));
                 }
             }
         }
@@ -1882,7 +1992,7 @@ export const MockService = {
             id: 'msg-1',
             neighborhoodId: 'hood-demo-1',
             userId: 'demo-admin-id',
-            userName: 'Suporte Atalaia',
+            userName: 'Suporte ServCam',
             userRole: UserRole.ADMIN,
             text: 'Bem-vindo ao canal integrado de segurança comunitária!',
             timestamp: new Date(),
@@ -2085,28 +2195,715 @@ export const MockService = {
     return newMsg;
   },
 
+  getWhatsAppConfig: async (): Promise<{ url: string; token: string; sessionId?: string }> => {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'whatsapp_config')
+        .maybeSingle();
+      
+      if (!error && data && data.value) {
+        const parsed = JSON.parse(data.value);
+        if (parsed && parsed.url) return parsed;
+      }
+    } catch (_) {}
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('atalaia_whatsapp_config');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.url) return parsed;
+        }
+      } catch (_) {}
+    }
+    return {
+      url: "https://whatsapp.alienmonitoramento.com.br:443/backend/api/messages/send",
+      token: "HSYumH8GyDXc90Bb1ZcBoVMBjatynktt",
+      sessionId: "Default"
+    };
+  },
+
+  saveWhatsAppConfig: async (config: { url: string; token: string; sessionId?: string }) => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('atalaia_whatsapp_config', JSON.stringify(config));
+      } catch (_) {}
+    }
+    try {
+      const res = await fetch('/api/whatsapp/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (_) {}
+    return { success: true, config };
+  },
+
+  getWhatsAppAutomations: async (): Promise<Record<string, WhatsAppAutomation>> => {
+    try {
+      const res = await fetch('/api/whatsapp/automations');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+          return { ...DEFAULT_WHATSAPP_AUTOMATIONS, ...data };
+        }
+      }
+    } catch (_) {}
+
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('atalaia_whatsapp_automations');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && typeof parsed === 'object') {
+            return { ...DEFAULT_WHATSAPP_AUTOMATIONS, ...parsed };
+          }
+        }
+      } catch (_) {}
+    }
+
+    return { ...DEFAULT_WHATSAPP_AUTOMATIONS };
+  },
+
+  saveWhatsAppAutomations: async (automations: Record<string, WhatsAppAutomation>): Promise<void> => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('atalaia_whatsapp_automations', JSON.stringify(automations));
+    }
+    try {
+      await fetch('/api/whatsapp/automations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(automations)
+      });
+    } catch (e) {
+      console.warn("[MockService] Erro ao sincronizar automações no backend:", e);
+    }
+  },
+
+  getWhatsAppLogs: async (): Promise<WhatsAppDispatchLog[]> => {
+    try {
+      const res = await fetch('/api/whatsapp/logs');
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (_) {}
+    return [];
+  },
+
+  clearWhatsAppLogs: async (): Promise<void> => {
+    try {
+      await fetch('/api/whatsapp/logs', { method: 'DELETE' });
+    } catch (_) {}
+  },
+
+  resolveIntegratorForUser: async (userOrData?: any): Promise<{
+    id?: string;
+    name: string;
+    companyName: string;
+    phone: string;
+    email: string;
+    displayName: string;
+  }> => {
+    let integratorId = userOrData?.integratorId || userOrData?.integrator_id;
+    let integratorName = userOrData?.integratorName || userOrData?.integrator_name;
+    let neighborhoodId = userOrData?.neighborhoodId || userOrData?.neighborhood_id || userOrData?.primaryNeighborhoodId || userOrData?.primary_neighborhood_id;
+
+    // 1. If neighborhoodId is available but no integrator, check the neighborhood
+    if ((!integratorId || !integratorName) && neighborhoodId) {
+      try {
+        const hood = await MockService.getNeighborhoodById(neighborhoodId);
+        if (hood) {
+          if (!integratorId && hood.integratorId) integratorId = hood.integratorId;
+          if (!integratorName && hood.integratorName) integratorName = hood.integratorName;
+        }
+      } catch (_) {}
+    }
+
+    // 2. If user id or email is provided, check user profile
+    if ((!integratorId || !integratorName) && (userOrData?.id || userOrData?.email)) {
+      try {
+        const users = await MockService.getUsers();
+        const found = users.find(u => (userOrData.id && u.id === userOrData.id) || (userOrData.email && u.email?.toLowerCase() === userOrData.email.toLowerCase()));
+        if (found) {
+          if (!integratorId && found.integratorId) integratorId = found.integratorId;
+          if (!integratorName && found.integratorName) integratorName = found.integratorName;
+          if (!neighborhoodId && found.neighborhoodId) {
+            neighborhoodId = found.neighborhoodId;
+            const hood = await MockService.getNeighborhoodById(found.neighborhoodId);
+            if (!integratorId && hood?.integratorId) integratorId = hood.integratorId;
+            if (!integratorName && hood?.integratorName) integratorName = hood.integratorName;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Check browser stored last client integrator
+    if (!integratorId && typeof window !== 'undefined') {
+      const storedLastIntId = localStorage.getItem('atalaia_last_client_integrator_id') || localStorage.getItem('servcam_last_client_integrator_id');
+      if (storedLastIntId) integratorId = storedLastIntId;
+    }
+
+    // 4. Look up full Integrator profile from getIntegrators()
+    let intUser: User | null = null;
+    try {
+      const integrators = await MockService.getIntegrators();
+      if (integratorId) {
+        intUser = integrators.find(i => i.id === integratorId) || null;
+      }
+      if (!intUser && integratorName) {
+        intUser = integrators.find(i => i.name?.toLowerCase() === integratorName?.toLowerCase() || i.companyName?.toLowerCase() === integratorName?.toLowerCase()) || null;
+      }
+      // 5. Fallback: if user is not linked to any specific integrator yet, pick the primary active integrator or first available
+      if (!intUser && integrators && integrators.length > 0) {
+        intUser = integrators[0];
+      }
+    } catch (_) {}
+
+    const finalName = intUser?.name || integratorName || 'Alien Sistemas (Rogerio Integrador)';
+    const finalCompany = intUser?.companyName || intUser?.razaoSocial || intUser?.name || 'Alien Sistemas de Segurança Eletrônica';
+    let finalPhone = intUser?.phone || '';
+    if (!finalPhone && intUser?.id && typeof window !== 'undefined') {
+      finalPhone = localStorage.getItem(`atalaia_integrator_phone_${intUser.id}`) || '';
+    }
+    if (!finalPhone && typeof window !== 'undefined') {
+      finalPhone = localStorage.getItem('user_last_phone') || '';
+    }
+    const finalEmail = intUser?.email || 'contato@aliensistemas.com.br';
+
+    let displayName = finalCompany;
+    if (intUser?.name && intUser.name !== finalCompany && !finalCompany.toLowerCase().includes(intUser.name.toLowerCase())) {
+      displayName = `${finalCompany} (${intUser.name})`;
+    } else if (!displayName || displayName === 'ServCam Segurança Eletrônica') {
+      displayName = finalName;
+    }
+
+    return {
+      id: intUser?.id || integratorId,
+      name: finalName,
+      companyName: finalCompany,
+      phone: finalPhone,
+      email: finalEmail,
+      displayName
+    };
+  },
+
+  formatAutomationTemplate: (template: string, vars: Record<string, string | undefined>): string => {
+    let result = template;
+    for (const [key, val] of Object.entries(vars)) {
+      const reg = new RegExp(`{{${key}}}`, 'gi');
+      result = result.replace(reg, val !== undefined && val !== null ? String(val) : '');
+    }
+    // Also support single braces {key}
+    for (const [key, val] of Object.entries(vars)) {
+      const reg = new RegExp(`(?<!{){${key}}(?!})`, 'gi');
+      result = result.replace(reg, val !== undefined && val !== null ? String(val) : '');
+    }
+    return result;
+  },
+
+  sendWhatsAppMessage: async (message: string, numbers: string[], customToken?: string, customUrl?: string, trigger?: string) => {
+    if (!numbers || numbers.length === 0) {
+      throw new Error("Nenhum número de telefone fornecido para envio.");
+    }
+
+    const config = await MockService.getWhatsAppConfig();
+    const targetUrl = (customUrl || config.url || "https://whatsapp.alienmonitoramento.com.br:443/backend/api/messages/send").trim();
+    const targetToken = (customToken || config.token || "HSYumH8GyDXc90Bb1ZcBoVMBjatynktt").trim();
+
+    // 1. Try calling the backend Node.js proxy first (if running full-stack)
+    try {
+      const proxyRes = await fetch('/api/whatsapp/send', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          numbers,
+          url: targetUrl,
+          token: targetToken,
+          trigger: trigger || "Disparo WhatsApp"
+        })
+      });
+      if (proxyRes.ok) {
+        const proxyData = await proxyRes.json();
+        if (proxyData.success) {
+          return proxyData;
+        }
+      }
+    } catch (_) {
+      // Backend proxy not available (static cPanel hosting), proceed to direct fetch
+    }
+
+    // 2. Direct client-side fetch to Whaticket API
+    const results = [];
+    const errors = [];
+    for (const target of numbers) {
+      let clean = String(target || "").replace(/\D/g, "");
+      if (clean.length === 10 || clean.length === 11) clean = "55" + clean;
+      if (clean.length < 8) continue;
+
+      let success = false;
+      let lastError = "";
+
+      const payloads = [
+        { number: clean, body: message },
+        { number: clean, message: message },
+        { phone: clean, message: message },
+        { number: clean, text: message }
+      ];
+
+      for (const payload of payloads) {
+        try {
+          const response = await fetch(targetUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${targetToken}`,
+              "apikey": targetToken
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            success = true;
+            break;
+          } else {
+            const errText = await response.text();
+            lastError = `HTTP ${response.status}: ${errText || response.statusText}`;
+            if (response.status === 401) {
+              lastError = "Erro 401: Token do Whaticket inválido ou não autorizado.";
+              break;
+            }
+          }
+        } catch (fetchErr: any) {
+          lastError = fetchErr?.message || "Erro de rede / CORS ao conectar com Whaticket.";
+        }
+      }
+
+      if (success) {
+        results.push({ target: clean, success: true });
+      } else {
+        errors.push(`Número ${clean}: ${lastError}`);
+        results.push({ target: clean, success: false, error: lastError });
+      }
+    }
+
+    if (errors.length > 0 && results.every(r => !r.success)) {
+      throw new Error(`Falha no envio WhatsApp: ${errors.join(' | ')}. (Dica: Se o erro for de CORS em produção estática no cPanel, configure um proxy PHP ou certifique-se de que o servidor Whaticket permite requisições cross-origin do seu domínio).`);
+    }
+
+    return { success: true, results };
+  },
+
   sendChatMessageToWhatsApp: async (userName: string, text: string, phoneNumber?: string) => {
     if (!phoneNumber) return;
     try {
         const settings = await MockService.getSettings();
-        const template = settings['chat_mirror_template'] || "*CHAT ATALAIA*\nDe: {user}\n{text}";
+        const template = settings['chat_mirror_template'] || "*CHAT SERVCAM*\nDe: {user}\n{text}";
         const message = template.replace('{user}', userName).replace('{text}', text);
 
-        supabase.functions.invoke('send-alert', { 
-            body: { message, numbers: [phoneNumber] } 
-        }).catch(e => console.warn("[WhatsApp Chat Mirror] Failed:", e));
+        MockService.sendWhatsAppMessage(message, [phoneNumber], undefined, undefined, 'Espelhamento de Chat').catch(e => console.warn("[WhatsApp Chat Mirror] Failed:", e));
     } catch (e) {
         console.warn("[WhatsApp Chat Mirror] Notice:", e);
     }
   },
 
-  notifyUserLogin: async (user: User) => {
+  notifyUserLogin: async (user: User, systemName?: string) => {
     try {
+        const automations = await MockService.getWhatsAppAutomations();
         const settings = await MockService.getSettings();
-        let waBody = settings['aviso_login'] || '✅ Login detectado: {{name}}';
-        waBody = waBody.replace('{{name}}', user.name).replace('{{time}}', new Date().toLocaleTimeString());
-        if (user.phone) { await supabase.functions.invoke('send-alert', { body: { message: waBody, numbers: [user.phone] } }); }
-    } catch (e) {}
+        const adminPhone = settings['admin_whatsapp'] || '5548998456070';
+        const integratorInfo = await MockService.resolveIntegratorForUser(user);
+
+        const roleLabels: Record<string, string> = {
+            [UserRole.ADMIN]: 'Administrador Master',
+            [UserRole.INTEGRATOR]: 'Empresa Integradora / Parceiro',
+            [UserRole.SCR]: 'Central SCR / Motovigia',
+            [UserRole.RESIDENT]: 'Cliente'
+        };
+
+        const resolvedRole = roleLabels[user.role] || user.role;
+        const resolvedSystem = systemName || (
+            user.role === UserRole.ADMIN ? 'Painel Master Administrativo' :
+            user.role === UserRole.INTEGRATOR ? 'Gestão do Integrador / Parceiro' :
+            user.role === UserRole.SCR ? 'Central SCR - Motovigia & Ronda' :
+            'Portal do Cliente ServCam'
+        );
+
+        let neighborhoodName = 'Geral / Matriz';
+        if (user.neighborhoodId) {
+            try {
+                const hood = await MockService.getNeighborhoodById(user.neighborhoodId);
+                if (hood?.name) neighborhoodName = hood.name;
+            } catch (_) {}
+        }
+
+        const now = new Date();
+        const vars = {
+            name: user.name || 'Usuário',
+            role: resolvedRole,
+            system: resolvedSystem,
+            email: user.email || 'Não informado',
+            phone: user.phone || 'Não informado',
+            neighborhood: neighborhoodName,
+            time: now.toLocaleTimeString('pt-BR'),
+            date: now.toLocaleDateString('pt-BR'),
+            link: typeof window !== 'undefined' ? window.location.origin : 'https://whatsapp.alienmonitoramento.com.br',
+            integrator: integratorInfo.displayName,
+            integrador: integratorInfo.displayName,
+            integrator_name: integratorInfo.name,
+            integrator_company: integratorInfo.companyName,
+            integrator_phone: integratorInfo.phone || 'Não informado',
+            integrador_telefone: integratorInfo.phone || 'Não informado',
+            integrator_email: integratorInfo.email || 'Não informado'
+        };
+
+        // 1. Notificação de segurança ao próprio usuário
+        const userAuto = automations['notify_login_user'];
+        if (userAuto?.enabled && user.phone) {
+            const body = MockService.formatAutomationTemplate(userAuto.template, vars);
+            MockService.sendWhatsAppMessage(body, [user.phone], undefined, undefined, `Aviso de Segurança (Login ${resolvedRole})`).catch(err => {
+                console.warn("[WhatsApp Login] Notice sending user warning:", err?.message || err);
+            });
+        }
+
+        // 2. Alerta de acesso ao Administrador Geral / Central ou Integrador vinculado
+        const adminAuto = automations['notify_login_admin'];
+        if (adminAuto?.enabled) {
+            if (!adminAuto.targetRole || adminAuto.targetRole === 'ALL' || adminAuto.targetRole === user.role) {
+                const body = MockService.formatAutomationTemplate(adminAuto.template, vars);
+                const targets: string[] = [];
+                if (adminPhone) targets.push(adminPhone);
+                if (user.role === UserRole.RESIDENT && integratorInfo.phone && !targets.includes(integratorInfo.phone)) {
+                    targets.push(integratorInfo.phone);
+                }
+                if (targets.length > 0) {
+                    MockService.sendWhatsAppMessage(body, targets, undefined, undefined, `Alerta de Acesso ao Sistema (${resolvedRole})`).catch(err => {
+                        console.warn("[WhatsApp Login] Notice sending admin alert:", err?.message || err);
+                    });
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("[MockService] Erro em notifyUserLogin:", e);
+    }
+  },
+
+  notifyNewUserRegistration: async (userData: { name: string; email: string; phone?: string; role?: string; neighborhoodId?: string; integratorId?: string; integratorName?: string }) => {
+    try {
+        const automations = await MockService.getWhatsAppAutomations();
+        const settings = await MockService.getSettings();
+        const adminPhone = settings['admin_whatsapp'] || '5548998456070';
+        const integratorInfo = await MockService.resolveIntegratorForUser(userData);
+
+        const roleLabels: Record<string, string> = {
+            [UserRole.ADMIN]: 'Administrador Master',
+            [UserRole.INTEGRATOR]: 'Empresa Integradora',
+            [UserRole.SCR]: 'Central SCR / Motovigia',
+            [UserRole.RESIDENT]: 'Cliente'
+        };
+
+        const resolvedRole = (userData.role && roleLabels[userData.role]) ? roleLabels[userData.role] : (userData.role || 'Cliente');
+        let neighborhoodName = 'Bairro Pendente';
+        if (userData.neighborhoodId) {
+            try {
+                const hood = await MockService.getNeighborhoodById(userData.neighborhoodId);
+                if (hood?.name) neighborhoodName = hood.name;
+            } catch (_) {}
+        }
+
+        const now = new Date();
+        const vars = {
+            name: userData.name || 'Novo Usuário',
+            role: resolvedRole,
+            email: userData.email || 'Não informado',
+            phone: userData.phone || 'Não informado',
+            neighborhood: neighborhoodName,
+            time: now.toLocaleTimeString('pt-BR'),
+            date: now.toLocaleDateString('pt-BR'),
+            link: typeof window !== 'undefined' ? `${window.location.origin}/login` : 'https://whatsapp.alienmonitoramento.com.br',
+            integrator: integratorInfo.displayName,
+            integrador: integratorInfo.displayName,
+            integrator_name: integratorInfo.name,
+            integrator_company: integratorInfo.companyName,
+            integrator_phone: integratorInfo.phone || 'Não informado',
+            integrador_telefone: integratorInfo.phone || 'Não informado',
+            integrator_email: integratorInfo.email || 'Não informado'
+        };
+
+        // 1. Boas-vindas para o usuário recém-cadastrado
+        const userAuto = automations['notify_register_user'];
+        if (userAuto?.enabled && userData.phone) {
+            const body = MockService.formatAutomationTemplate(userAuto.template, vars);
+            MockService.sendWhatsAppMessage(body, [userData.phone], undefined, undefined, 'Boas-Vindas Novo Cadastro').catch(err => {
+                console.warn("[WhatsApp Register] Falha envio boas-vindas:", err);
+            });
+        }
+
+        // 2. Alerta para o Administrador e para o Integrador Vinculado sobre nova solicitação de cadastro
+        const adminAuto = automations['notify_register_admin'];
+        if (adminAuto?.enabled) {
+            const body = MockService.formatAutomationTemplate(adminAuto.template, vars);
+            const targets: string[] = [];
+            if (adminPhone) targets.push(adminPhone);
+            if (integratorInfo.phone && !targets.includes(integratorInfo.phone)) {
+                targets.push(integratorInfo.phone);
+            }
+            if (targets.length > 0) {
+                MockService.sendWhatsAppMessage(body, targets, undefined, undefined, 'Alerta Novo Cadastro Pendente').catch(err => {
+                    console.warn("[WhatsApp Register] Falha aviso admin/integrador:", err);
+                });
+            }
+        }
+    } catch (e) {
+        console.warn("[MockService] Erro em notifyNewUserRegistration:", e);
+    }
+  },
+
+  notifyUserApproved: async (user: User) => {
+    try {
+        const automations = await MockService.getWhatsAppAutomations();
+        const userAuto = automations['notify_user_approved'];
+        if (!userAuto?.enabled || !user.phone) return;
+
+        const integratorInfo = await MockService.resolveIntegratorForUser(user);
+
+        const roleLabels: Record<string, string> = {
+            [UserRole.ADMIN]: 'Administrador',
+            [UserRole.INTEGRATOR]: 'Empresa Integradora / Parceiro',
+            [UserRole.SCR]: 'Central SCR / Motovigia',
+            [UserRole.RESIDENT]: 'Cliente'
+        };
+
+        const resolvedRole = roleLabels[user.role] || user.role;
+        let neighborhoodName = 'Bairro Cadastrado';
+        if (user.neighborhoodId) {
+            try {
+                const hood = await MockService.getNeighborhoodById(user.neighborhoodId);
+                if (hood?.name) neighborhoodName = hood.name;
+            } catch (_) {}
+        }
+
+        const now = new Date();
+        const vars = {
+            name: user.name || 'Usuário',
+            role: resolvedRole,
+            email: user.email || '',
+            phone: user.phone,
+            neighborhood: neighborhoodName,
+            time: now.toLocaleTimeString('pt-BR'),
+            date: now.toLocaleDateString('pt-BR'),
+            link: typeof window !== 'undefined' ? `${window.location.origin}/login` : 'https://whatsapp.alienmonitoramento.com.br',
+            integrator: integratorInfo.displayName,
+            integrador: integratorInfo.displayName,
+            integrator_name: integratorInfo.name,
+            integrator_company: integratorInfo.companyName,
+            integrator_phone: integratorInfo.phone || 'Não informado',
+            integrador_telefone: integratorInfo.phone || 'Não informado',
+            integrator_email: integratorInfo.email || 'Não informado'
+        };
+
+        const body = MockService.formatAutomationTemplate(userAuto.template, vars);
+        await MockService.sendWhatsAppMessage(body, [user.phone], undefined, undefined, 'Notificação de Cadastro Aprovado');
+    } catch (e) {
+        console.warn("[MockService] Erro em notifyUserApproved:", e);
+    }
+  },
+
+  notifySecurityAlert: async (alertData: { title: string; message: string; type?: string; neighborhoodId?: string; userName?: string; userPhone?: string }) => {
+    try {
+        const automations = await MockService.getWhatsAppAutomations();
+        const auto = automations['notify_sos_alert'];
+        if (!auto?.enabled) return;
+
+        const settings = await MockService.getSettings();
+        const adminPhone = settings['admin_whatsapp'] || '5548998456070';
+        const integratorInfo = await MockService.resolveIntegratorForUser({
+            neighborhoodId: alertData.neighborhoodId,
+            name: alertData.userName,
+            phone: alertData.userPhone
+        });
+
+        let neighborhoodName = 'Bairro Integrado';
+        let targetPhones: string[] = [];
+
+        if (alertData.neighborhoodId) {
+            try {
+                const hood = await MockService.getNeighborhoodById(alertData.neighborhoodId);
+                if (hood?.name) neighborhoodName = hood.name;
+            } catch (_) {}
+
+            try {
+                const users = await MockService.getUsers();
+                targetPhones = users
+                    .filter(u => u.neighborhoodId === alertData.neighborhoodId && u.phone)
+                    .map(u => u.phone!)
+                    .filter(Boolean);
+            } catch (_) {}
+        }
+
+        if (adminPhone && !targetPhones.includes(adminPhone)) {
+            targetPhones.push(adminPhone);
+        }
+        if (integratorInfo.phone && !targetPhones.includes(integratorInfo.phone)) {
+            targetPhones.push(integratorInfo.phone);
+        }
+
+        if (targetPhones.length === 0) return;
+
+        const now = new Date();
+        const vars = {
+            name: alertData.userName || 'Cliente em Alerta',
+            details: `${alertData.title}: ${alertData.message}`,
+            neighborhood: neighborhoodName,
+            time: now.toLocaleTimeString('pt-BR'),
+            date: now.toLocaleDateString('pt-BR'),
+            integrator: integratorInfo.displayName,
+            integrador: integratorInfo.displayName,
+            integrator_name: integratorInfo.name,
+            integrator_company: integratorInfo.companyName,
+            integrator_phone: integratorInfo.phone || 'Não informado',
+            integrador_telefone: integratorInfo.phone || 'Não informado',
+            integrator_email: integratorInfo.email || 'Não informado'
+        };
+
+        const body = MockService.formatAutomationTemplate(auto.template, vars);
+        MockService.sendWhatsAppMessage(body, targetPhones, undefined, undefined, 'Alerta SOS / Pânico de Emergência').catch(err => {
+            console.warn("[WhatsApp SOS] Falha no disparo:", err);
+        });
+    } catch (e) {
+        console.warn("[MockService] Erro em notifySecurityAlert:", e);
+    }
+  },
+
+  notifySupportTicket: async (userName: string, userPhone: string | undefined, messageText: string, neighborhoodName?: string, neighborhoodId?: string) => {
+    try {
+        const automations = await MockService.getWhatsAppAutomations();
+        const auto = automations['notify_support_ticket'];
+        if (!auto?.enabled) return;
+
+        const settings = await MockService.getSettings();
+        const adminPhone = settings['admin_whatsapp'] || '5548998456070';
+        const integratorInfo = await MockService.resolveIntegratorForUser({
+            neighborhoodId,
+            name: userName,
+            phone: userPhone
+        });
+
+        const targets: string[] = [];
+        if (adminPhone) targets.push(adminPhone);
+        if (integratorInfo.phone && !targets.includes(integratorInfo.phone)) {
+            targets.push(integratorInfo.phone);
+        }
+
+        if (targets.length === 0) return;
+
+        const now = new Date();
+        const vars = {
+            name: userName,
+            phone: userPhone || 'Não informado',
+            details: messageText,
+            neighborhood: neighborhoodName || 'Central',
+            time: now.toLocaleTimeString('pt-BR'),
+            date: now.toLocaleDateString('pt-BR'),
+            integrator: integratorInfo.displayName,
+            integrador: integratorInfo.displayName,
+            integrator_name: integratorInfo.name,
+            integrator_company: integratorInfo.companyName,
+            integrator_phone: integratorInfo.phone || 'Não informado',
+            integrador_telefone: integratorInfo.phone || 'Não informado',
+            integrator_email: integratorInfo.email || 'Não informado'
+        };
+
+        const body = MockService.formatAutomationTemplate(auto.template, vars);
+        MockService.sendWhatsAppMessage(body, targets, undefined, undefined, 'Chamado de Suporte Técnico').catch(err => {
+            console.warn("[WhatsApp Support] Falha envio:", err);
+        });
+    } catch (e) {
+        console.warn("[MockService] Erro em notifySupportTicket:", e);
+    }
+  },
+
+  notifyContractSigned: async (user: User, contractData: any) => {
+    try {
+        const automations = await MockService.getWhatsAppAutomations();
+        const auto = automations['notify_contract_signed'];
+        if (!auto?.enabled) return;
+
+        const settings = await MockService.getSettings();
+        const adminPhone = settings['admin_whatsapp'] || '5548998456070';
+        const integratorInfo = await MockService.resolveIntegratorForUser(user);
+
+        const now = new Date();
+        const vars = {
+            name: user.name || contractData?.name || 'Cliente',
+            email: user.email || 'Não informado',
+            phone: user.phone || contractData?.phone || 'Não informado',
+            time: now.toLocaleTimeString('pt-BR'),
+            date: now.toLocaleDateString('pt-BR'),
+            role: user.role === UserRole.INTEGRATOR ? 'Empresa Integradora' : 'Cliente',
+            link: typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : 'https://whatsapp.alienmonitoramento.com.br',
+            integrator: integratorInfo.displayName,
+            integrador: integratorInfo.displayName,
+            integrator_name: integratorInfo.name,
+            integrator_company: integratorInfo.companyName,
+            integrator_phone: integratorInfo.phone || 'Não informado',
+            integrador_telefone: integratorInfo.phone || 'Não informado',
+            integrator_email: integratorInfo.email || 'Não informado'
+        };
+
+        const body = MockService.formatAutomationTemplate(auto.template, vars);
+        const targets: string[] = [];
+        if (user.phone) targets.push(user.phone);
+        if (contractData?.phone && !targets.includes(contractData.phone)) targets.push(contractData.phone);
+        if (adminPhone && !targets.includes(adminPhone)) targets.push(adminPhone);
+        if (integratorInfo.phone && !targets.includes(integratorInfo.phone)) targets.push(integratorInfo.phone);
+
+        if (targets.length > 0) {
+            MockService.sendWhatsAppMessage(body, targets, undefined, undefined, 'Assinatura de Contrato').catch(err => {
+                console.warn("[WhatsApp Contract Signed] Falha envio:", err);
+            });
+        }
+    } catch (e) {
+        console.warn("[MockService] Erro em notifyContractSigned:", e);
+    }
+  },
+
+  testWhatsAppAutomation: async (triggerKey: string, customPhone: string): Promise<any> => {
+    const automations = await MockService.getWhatsAppAutomations();
+    const auto = automations[triggerKey] || DEFAULT_WHATSAPP_AUTOMATIONS[triggerKey];
+    if (!auto) {
+        throw new Error(`Gatilho de automação '${triggerKey}' não encontrado.`);
+    }
+
+    const now = new Date();
+    const mockVars = {
+        name: 'Carlos Oliveira (Teste)',
+        role: 'Cliente / Residencial',
+        system: 'Portal do Cliente ServCam',
+        email: 'carlos.teste@servcam.com',
+        phone: customPhone,
+        neighborhood: 'Jardim Alvorada',
+        time: now.toLocaleTimeString('pt-BR'),
+        date: now.toLocaleDateString('pt-BR'),
+        details: 'Simulação de evento acionado pelo Painel Administrativo.',
+        link: typeof window !== 'undefined' ? window.location.origin : 'https://whatsapp.alienmonitoramento.com.br',
+        integrator: 'Alien Sistemas (Rogerio Integrador)',
+        integrador: 'Alien Sistemas (Rogerio Integrador)',
+        integrator_name: 'Rogerio Integrador',
+        integrator_company: 'Alien Sistemas de Segurança Eletrônica',
+        integrator_phone: '(48) 99845-6070',
+        integrador_telefone: '(48) 99845-6070',
+        integrator_email: 'contato@aliensistemas.com.br'
+    };
+
+    const formattedBody = MockService.formatAutomationTemplate(auto.template, mockVars);
+    const triggerLabel = `Teste: ${auto.name}`;
+
+    return await MockService.sendWhatsAppMessage(formattedBody, [customPhone], undefined, undefined, triggerLabel);
   },
 
   sendCustomBroadcast: async (message: string, targetType: string, neighborhoodId?: string) => {
@@ -2118,8 +2915,7 @@ export const MockService = {
           } else if (targetType === 'ADMINS') {
               query = query.eq('role', 'ADMIN');
           } else if (targetType === 'INDIVIDUAL') {
-              // No caso individual, o 'message' pode conter o número ou ser tratado de outra forma
-              // Mas aqui o broadcast geralmente é para grupos de pessoas
+              // No caso individual, o broadcast é feito para números manuais
           }
           
           const { data, error } = await query;
@@ -2128,18 +2924,7 @@ export const MockService = {
           const numbers = (data || []).map(u => u.phone).filter(Boolean) as string[];
           
           if (numbers.length > 0) { 
-              const { data: funcData, error: funcError } = await supabase.functions.invoke('send-alert', { 
-                  body: { message, numbers } 
-              });
-              
-              if (funcError) throw funcError;
-              
-              const failed = funcData?.results?.find((r: any) => !r.success);
-              if (failed) {
-                  throw new Error(`Erro na API WhatsApp: ${failed.error || 'Falha no envio'}`);
-              }
-              
-              return funcData;
+              return await MockService.sendWhatsAppMessage(message, numbers);
           } else {
               throw new Error("Nenhum número de telefone encontrado para o alvo selecionado.");
           }
@@ -2166,17 +2951,19 @@ export const MockService = {
     
     if (true) {
         if (error) console.warn("[MockService] Ignorando aviso no supabase para continuar o alerta:", error);
-        const integrator = await MockService.getNeighborhoodIntegrator(neighborhoodId);
+        const integrator = await MockService.resolveIntegratorForUser({ neighborhoodId, id: userId, name: userName });
         if (integrator?.phone) {
             const settings = await MockService.getSettings();
-            const template = settings['service_request_template'] || "*SOLICITAÇÃO*\nTipo: {type}\nMorador: {user}";
+            const template = settings['service_request_template'] || "*SOLICITAÇÃO*\nTipo: {type}\nCliente: {user}\nIntegrador Responsável: {integrator}";
             const label = requestType === 'ESCORT' ? 'ESCOLTA' : requestType === 'EXTRA_ROUND' ? 'RONDA EXTRA' : 'AVISO DE VIAGEM';
             
-            const message = template.replace('{type}', label).replace('{user}', userName);
+            const message = template
+                .replace(/{type}/g, label)
+                .replace(/{user}/g, userName)
+                .replace(/{integrator}/g, integrator.displayName)
+                .replace(/{integrador}/g, integrator.displayName);
 
-            await supabase.functions.invoke('send-alert', {
-                body: { message, numbers: [integrator.phone] }
-            });
+            await MockService.sendWhatsAppMessage(message, [integrator.phone], undefined, undefined, 'Solicitação de Serviço');
         }
     }
 
@@ -2213,23 +3000,31 @@ export const MockService = {
             if (profile) {
                 // Determine clean time string
                 const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                const integratorInfo = await MockService.resolveIntegratorForUser({
+                    id: profile.id,
+                    name: profile.name,
+                    phone: profile.phone,
+                    neighborhoodId: profile.neighborhood_id || neighborhoodId
+                });
 
                 // Send WhatsApp if they have a phone number
                 if (profile.phone) {
                     const settings = await MockService.getSettings();
                     const template = settings['patrol_notification_template'] || 
-                        "*ATALAIA - INFORME DO MOTOVIGIA* 🏍️💨\n\nOlá *{name}*!\n\nInformamos que o Motovigia em ronda pelo seu setor registrou uma ocorrência em sua residência:\n\n📌 Ocorrência: *{note}*\n🏠 Local: {address}\n⏰ Horário: *{time}*\n\n_Bairro Seguro e vigiado com o Atalaia. Se precisar, conte conosco!_";
+                        "*INFORME DO MOTOVIGIA* 🏍️💨\n\nOlá *{name}*!\n\nInformamos que o Motovigia em ronda pelo seu setor registrou uma ocorrência em sua residência:\n\n📌 Ocorrência: *{note}*\n🏠 Local: {address}\n⏰ Horário: *{time}*\n🛡️ Integrador Responsável: *{integrator}*\n\n_Bairro Seguro e monitorado via ServCam. Se precisar, conte conosco!_";
 
                     const customMessage = template
-                        .replace(/{name}/g, profile.name || 'Morador')
+                        .replace(/{name}/g, profile.name || 'Cliente')
                         .replace(/{note}/g, note.replace(/OCORRÊNCIA:\s*/g, '')) // clean any occurrence prefix
                         .replace(/{address}/g, profile.address || 'Seu lote cadastrado')
-                        .replace(/{time}/g, timeStr);
+                        .replace(/{time}/g, timeStr)
+                        .replace(/{integrator}/g, integratorInfo.displayName)
+                        .replace(/{integrador}/g, integratorInfo.displayName)
+                        .replace(/{integrator_phone}/g, integratorInfo.phone || '')
+                        .replace(/{integrador_telefone}/g, integratorInfo.phone || '');
 
                     try {
-                        await supabase.functions.invoke('send-alert', {
-                            body: { message: customMessage, numbers: [profile.phone] }
-                        });
+                        await MockService.sendWhatsAppMessage(customMessage, [profile.phone], undefined, undefined, 'Informe do Motovigia');
                     } catch (err) {
                         console.warn("[MockService/WhatsApp] Notice dispatching patrol WhatsApp alert:", err);
                     }
@@ -2347,15 +3142,20 @@ export const MockService = {
         }]);
     
     if (!error) {
-        const settings = await MockService.getSettings();
-        const adminPhone = settings['admin_whatsapp'];
-        const template = settings['support_ticket_template'] || "*SUPORTE*\n{user}: {text}";
-        
-        if (adminPhone) {
-            const finalMsg = template.replace('{user}', userName).replace('{text}', message);
-            await supabase.functions.invoke('send-alert', {
-                body: { message: finalMsg, numbers: [adminPhone] }
-            });
+        try {
+            let userPhone: string | undefined;
+            let hoodName: string | undefined;
+            if (userId) {
+                const { data: prof } = await supabase.from('profiles').select('phone').eq('id', sanitizeUUID(userId)).maybeSingle();
+                if (prof?.phone) userPhone = prof.phone;
+            }
+            if (neighborhoodId) {
+                const hood = await MockService.getNeighborhoodById(neighborhoodId);
+                if (hood?.name) hoodName = hood.name;
+            }
+            await MockService.notifySupportTicket(userName, userPhone, message, hoodName, neighborhoodId);
+        } catch (ticketNotifyErr) {
+            console.warn("[createSupportTicket] Notice notifying via WhatsApp:", ticketNotifyErr);
         }
     }
 

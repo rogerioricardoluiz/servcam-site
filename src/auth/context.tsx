@@ -55,7 +55,48 @@ const DEMO_USERS: Record<string, any> = {
     },
     'integrador@atalaia.com': {
         id: 'demo-integrator-id',
-        email: 'integrador@atalaia.com',
+        email: 'integrador@servcam.com.br',
+        name: 'Gestor Anderson',
+        role: UserRole.INTEGRATOR,
+        plan: 'PREMIUM',
+        approved: true,
+        neighborhood_id: 'hood-demo-1',
+        neighborhoodId: 'hood-demo-1',
+        primaryNeighborhoodId: 'hood-demo-1'
+    },
+    'cliente@servcam.com.br': {
+        id: 'demo-user-id',
+        email: 'cliente@servcam.com.br',
+        name: 'Mariana Costa',
+        role: UserRole.RESIDENT,
+        plan: 'PREMIUM',
+        approved: true,
+        neighborhood_id: 'hood-demo-1',
+        neighborhoodId: 'hood-demo-1',
+        primaryNeighborhoodId: 'hood-demo-1'
+    },
+    'admin@servcam.com.br': {
+        id: 'demo-admin-id',
+        email: 'admin@servcam.com.br',
+        name: 'Carlos Silva',
+        role: UserRole.ADMIN,
+        plan: 'PREMIUM',
+        approved: true
+    },
+    'scr@servcam.com.br': {
+        id: 'demo-scr-id',
+        email: 'scr@servcam.com.br',
+        name: 'Vigia Roberto',
+        role: UserRole.SCR,
+        plan: 'PREMIUM',
+        approved: true,
+        neighborhood_id: 'hood-demo-1',
+        neighborhoodId: 'hood-demo-1',
+        primaryNeighborhoodId: 'hood-demo-1'
+    },
+    'integrador@servcam.com.br': {
+        id: 'demo-integrator-id',
+        email: 'integrador@servcam.com.br',
         name: 'Gestor Anderson',
         role: UserRole.INTEGRATOR,
         plan: 'PREMIUM',
@@ -736,6 +777,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const cleanEmail = email.trim().toLowerCase();
     const isDemoEmail = [
       'servcam@alienmonitoramento.com.br',
+      'cliente@servcam.com.br',
+      'admin@servcam.com.br',
+      'integrador@servcam.com.br',
+      'scr@servcam.com.br',
       'admin@atalaia.com',
       'geane.admin@atalaia.cloud',
       'morador@atalaia.com',
@@ -789,6 +834,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             setUser(finalDemoUser);
+            MockService.notifyUserLogin(finalDemoUser).catch(() => {});
             await SessionService.registerSession(finalDemoUser.id, finalDemoUser.email);
             return;
         } else if (isDemoEmail) {
@@ -818,6 +864,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } else if (DEMO_USERS[cleanEmail]) {
                 const fallbackProfile = DEMO_USERS[cleanEmail];
                 setUser(fallbackProfile);
+                MockService.notifyUserLogin(fallbackProfile).catch(() => {});
                 localStorage.setItem(`atalaia_local_profile_${fallbackProfile.id}`, JSON.stringify(fallbackProfile));
                 localStorage.setItem(`atalaia_cached_role_${fallbackProfile.id}`, fallbackProfile.role);
                 await SessionService.registerSession(fallbackProfile.id, fallbackProfile.email);
@@ -1032,6 +1079,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     setUser(completeProfile);
+    MockService.notifyUserLogin(completeProfile, 'Acesso Facial Biométrico').catch(() => {});
     await SessionService.registerSession(completeProfile.id, completeProfile.email);
     if (completeProfile.phone) {
        localStorage.setItem('user_last_phone', completeProfile.phone);
@@ -1061,6 +1109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         phone
                     };
                     setUser(newUser);
+                    MockService.notifyNewUserRegistration(newUser).catch(() => {});
                     return;
                 }
                 const isApproved = role === UserRole.ADMIN || role === UserRole.RESIDENT;
@@ -1080,6 +1129,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
                 if (data.user) {
                     await supabase.from('profiles').upsert({ id: data.user.id, email, name, phone, neighborhood_id: safeNeighborhoodId, role, approved: isApproved, plan: resolvedPlan });
+                    MockService.notifyNewUserRegistration({ name: name || email.split('@')[0], email, phone, role, neighborhoodId: safeNeighborhoodId || undefined }).catch(() => {});
                     if (!isApproved) { await supabase.auth.signOut(); throw new Error("Aguarde aprovação."); }
                     await fetchProfile(data.user.id, email, { role, name, neighborhood_id: safeNeighborhoodId, phone, approved: isApproved, plan: resolvedPlan }, true);
                     await SessionService.registerSession(data.user.id, email);

@@ -138,12 +138,12 @@ const FinancialAdmin: React.FC = () => {
       }
 
       if (!base64) {
-        throw new Error("Comprovante não encontrado. O morador precisa anexá-lo novamente.");
+        throw new Error("Comprovante não encontrado. O cliente precisa anexá-lo novamente.");
       }
 
       if (action === 'view') {
         setSelectedReceipt({
-          userName: payment.userName || "Morador",
+          userName: payment.userName || "Cliente",
           amount: payment.amount,
           name: name,
           base64: base64
@@ -258,7 +258,7 @@ const FinancialAdmin: React.FC = () => {
     setExpiringUsers(true);
     try {
       const degraded = await MockService.checkAllUsersPromoExpiration();
-      alert(`Varredura concluída com sucesso! ${degraded} morador(es) com teste de 7 dias vencidos foram rebaixados para o Plano Gratuito.`);
+      alert(`Varredura concluída com sucesso! ${degraded} cliente(s) com teste de 7 dias vencidos foram rebaixados para o Plano Gratuito.`);
     } catch (err) {
       console.error("Erro ao simular varredura de cupons:", err);
       alert("Falha na varredura.");
@@ -457,7 +457,7 @@ const FinancialAdmin: React.FC = () => {
           const payerEmail = item.payer?.email?.trim().toLowerCase() || '';
           const payerName = `${item.payer?.first_name || ''} ${item.payer?.last_name || ''}`.trim() || 'Desconhecido';
           
-          // Tentar encontrar morador no Atalaia usando o helper robusto (e-mail, metadata, nome ou telefone)
+          // Tentar encontrar cliente no ServCam usando o helper robusto (e-mail, metadata, nome ou telefone)
           const matchedUser = findMatchedUser(item, users);
 
           return {
@@ -565,7 +565,7 @@ const FinancialAdmin: React.FC = () => {
         const refMonth = `${(payDate.getMonth() + 1).toString().padStart(2, '0')}/${payDate.getFullYear()}`;
         const amount = Number(rawPay.transaction_amount || 0);
 
-        // Verificar se esse morador já tem faturamento para esse mês específico
+        // Verificar se esse cliente já tem faturamento para esse mês específico
         const matchedSystemPayment = existingPayments.find(p => 
           p.user_id === matchedUser.id && 
           p.reference_month === refMonth
@@ -594,7 +594,7 @@ const FinancialAdmin: React.FC = () => {
       }
 
       alert(`CONCILIAÇÃO MERCADO PAGO CONCLUÍDA!\n\n` +
-            `✅ ${matchedPaymentsCount} pagamentos identificados de moradores do Atalaia.\n` +
+            `✅ ${matchedPaymentsCount} pagamentos identificados de clientes do ServCam.\n` +
             `🔄 ${reconciledCount} faturas pendentes atualizadas para PAGO de forma instantânea.\n` +
             `⭐ ${newPaidGeneratedCount} novas mensalidades pagas lançadas diretamente no faturamento.`);
       
@@ -615,7 +615,7 @@ const FinancialAdmin: React.FC = () => {
     const selectedRes = residents.find(r => r.id === userId);
     if (!selectedRes) return;
 
-    if (!confirm(`Deseja vincular manualmente o pagamento de R$ ${Number(item.amount || 0).toFixed(2)} ao morador ${selectedRes.name}?`)) return;
+    if (!confirm(`Deseja vincular manualmente o pagamento de R$ ${Number(item.amount || 0).toFixed(2)} ao cliente ${selectedRes.name}?`)) return;
 
     try {
       const payDateStr = item.dateApproved || item.dateCreated;
@@ -623,10 +623,10 @@ const FinancialAdmin: React.FC = () => {
       const refMonth = `${(payDate.getMonth() + 1).toString().padStart(2, '0')}/${payDate.getFullYear()}`;
       const amount = Number(item.amount || 0);
 
-      // Carregar as faturas existentes do Atalaia
+      // Carregar as faturas existentes do ServCam
       const existingPayments = await MockService.getPayments();
 
-      // Verificar se esse morador já tem faturamento para esse mês específico
+      // Verificar se esse cliente já tem faturamento para esse mês específico
       const matchedSystemPayment = existingPayments.find(p => 
         p.user_id === selectedRes.id && 
         p.reference_month === refMonth
@@ -685,7 +685,7 @@ const FinancialAdmin: React.FC = () => {
   };
 
   const handleGenerateInvoices = async () => {
-    if (!confirm("Deseja gerar as mensalidades do mês atual para todos os moradores ativos?")) return;
+    if (!confirm("Deseja gerar as mensalidades do mês atual para todos os clientes ativos?")) return;
     
     setLoading(true);
     try {
@@ -900,7 +900,7 @@ const FinancialAdmin: React.FC = () => {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                   <input 
                     type="text" 
-                    placeholder="Buscar por morador ou bairro..." 
+                    placeholder="Buscar por cliente ou bairro..." 
                     className="w-full bg-black border border-white/10 rounded-xl py-2 pl-10 pr-4 text-sm text-white focus:border-atalaia-neon outline-none transition-colors"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -930,7 +930,7 @@ const FinancialAdmin: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-white/5 border-b border-white/10">
-                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Morador</th>
+                      <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Cliente</th>
                       <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Bairro</th>
                       <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Plano</th>
                       <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Valor</th>
@@ -1061,7 +1061,7 @@ const FinancialAdmin: React.FC = () => {
             <div className="p-4 bg-white/5 border-b border-white/10 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h4 className="text-sm font-bold text-white">Lançamentos Diretos no Mercado Pago</h4>
-                <p className="text-xs text-gray-400">Últimos 50 faturamentos registrados no gateway associados ou não ao Atalaia.</p>
+                <p className="text-xs text-gray-400">Últimos 50 faturamentos registrados no gateway associados ou não ao ServCam.</p>
               </div>
               <Button 
                 variant="outline"
@@ -1081,7 +1081,7 @@ const FinancialAdmin: React.FC = () => {
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Valor Pago</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Criação / Aprovação</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Status Mercado Pago</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Vínculo de Cadastro (Atalaia)</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-gray-500">Vínculo de Cadastro (ServCam)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5">
@@ -1148,7 +1148,7 @@ const FinancialAdmin: React.FC = () => {
                                     }}
                                     className="bg-black border border-white/10 rounded-lg px-2.5 py-1 text-xs text-gray-300 focus:border-atalaia-neon outline-none max-w-[170px]"
                                   >
-                                    <option value="" disabled>Vincular a Morador...</option>
+                                    <option value="" disabled>Vincular a Cliente...</option>
                                     {residents.map(r => (
                                       <option key={r.id} value={r.id}>{r.name}</option>
                                     ))}
@@ -1310,7 +1310,7 @@ const FinancialAdmin: React.FC = () => {
             {/* Listagem de cupons */}
             <Card className="overflow-hidden">
               <div className="p-4 bg-white/5 border-b border-white/10">
-                <h4 className="text-sm font-bold text-white">Cupons Registrados no Atalaia</h4>
+                <h4 className="text-sm font-bold text-white">Cupons Registrados no ServCam</h4>
               </div>
               
               <div className="overflow-x-auto select-none">

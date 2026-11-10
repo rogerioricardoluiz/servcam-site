@@ -66,7 +66,10 @@ class WhaticketProvider(WhatsAppProvider):
         self.session_id = session_id
 
     def send_message(self, number: str, message: str, media_url: Optional[str] = None) -> Dict[str, Any]:
-        endpoint = f"{self.api_url}/api/messages/send"
+        if "/api/messages/send" in self.api_url:
+            endpoint = self.api_url
+        else:
+            endpoint = f"{self.api_url}/api/messages/send"
         headers = {
             "Authorization": f"Bearer {self.token}",
             "Content-Type": "application/json"

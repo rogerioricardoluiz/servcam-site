@@ -17,8 +17,8 @@ serve(async (req) => {
 
   try {
     const WHATSAPP_TOKEN = Deno.env.get("WHATSAPP_TOKEN") || "htGbba00iOEb9B74jRl2Y2lStYcSsEuJJvC2ST3IwCI5tcxFiu71WXxfHWwUeYC1"; // Use default if ENV not set
-    const WHATSAPP_URL = "https://app.whatendimento.digital/api/messages/send";
-    const SESSION_ID = "Default"; // Adjust according to Whaticket session if needed
+    const WHATSAPP_URL = Deno.env.get("WHATSAPP_URL") || "https://whatsapp.alienmonitoramento.com.br:443/backend/api/messages/send";
+    const SESSION_ID = Deno.env.get("WHATSAPP_SESSION_ID") || "Default"; // Adjust according to Whaticket session if needed
 
     if (!WHATSAPP_TOKEN) {
       throw new Error("WHATSAPP_TOKEN não configurado nos Secrets do Supabase.");

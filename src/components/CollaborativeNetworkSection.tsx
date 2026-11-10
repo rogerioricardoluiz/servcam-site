@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Modal, Input, Button } from '@/components/UI';
 import { supabase } from '@/lib/supabaseClient';
+import { MockService } from '@/services/mockService';
 import atalaiaWarningPlaqueImg from '@/assets/images/atalaia_warning_plaque_1784380494061.jpg';
 import { 
   Camera, 
@@ -56,12 +57,8 @@ export const CollaborativeNetworkSection: React.FC = () => {
         cleanPhone = `55${cleanPhone}`;
       }
       
-      // Enviar mensagem via Whaticket API (Supabase Edge Function)
-      const { data, error } = await supabase.functions.invoke('send-alert', { 
-        body: { message, numbers: [cleanPhone] } 
-      });
-      
-      if (error) throw error;
+      // Enviar mensagem via Whaticket API
+      await MockService.sendWhatsAppMessage(message, [cleanPhone]);
       
       setPartnerSuccess(true);
       setTimeout(() => {
@@ -137,7 +134,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
             transition={{ delay: 0.2 }}
             className="text-lg md:text-xl text-gray-400 leading-relaxed font-medium"
           >
-            O Atalaia cria uma rede colaborativa onde clientes e empresas podem compartilhar, de forma totalmente voluntária, apenas as câmeras que monitoram ruas, calçadas, estacionamentos e outras áreas públicas, ajudando equipes de segurança, bombeiros, defesa civil e vizinhos durante situações de emergência.
+            O ServCam cria uma rede colaborativa onde clientes e empresas podem compartilhar, de forma totalmente voluntária, apenas as câmeras que monitoram ruas, calçadas, estacionamentos e outras áreas públicas, ajudando equipes de segurança, bombeiros, defesa civil e vizinhos durante situações de emergência.
           </motion.p>
         </div>
 
@@ -154,7 +151,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
               <ShieldCheck size={40} className="text-atalaia-neon" />
               <div className="absolute inset-0 rounded-full border border-atalaia-neon animate-ping opacity-50" style={{ animationDuration: '3s' }}></div>
             </div>
-            <span className="mt-3 text-sm font-bold text-white tracking-widest uppercase">Central Atalaia</span>
+            <span className="mt-3 text-sm font-bold text-white tracking-widest uppercase">Central de Monitoramento</span>
           </div>
 
           {/* Orbiting Elements */}
@@ -212,7 +209,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
             { icon: Star, title: "Benefícios Exclusivos", desc: "Ao compartilhar sua câmera, você ganha manutenção gratuita no equipamento e acesso gratuito ao app na modalidade Premium." },
             { icon: Share2, title: "Compartilhamento voluntário", desc: "Você decide quando, como e com quem deseja compartilhar." },
             { icon: Lock, title: "Privacidade garantida", desc: "Somente câmeras voltadas para áreas públicas. Ambientes internos nunca são compartilhados." },
-            { icon: Zap, title: "Resposta rápida", desc: "Durante uma ocorrência, a Central Atalaia identifica automaticamente as câmeras mais próximas." },
+            { icon: Zap, title: "Resposta rápida", desc: "Durante uma ocorrência, a Central de Monitoramento identifica automaticamente as câmeras mais próximas." },
             { icon: Camera, title: "Compatível com centenas de equipamentos", desc: "Intelbras, Hikvision, HiLook, Dahua, Axis, Uniview, Bosch, Hanwha, Vivotek, Giga Security e qualquer RTSP / RTMP / ONVIF." },
           ].map((card, idx) => (
             <motion.div 
@@ -247,7 +244,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8 relative z-10 px-4">
             {[
               { icon: Camera, title: "O proprietário cadastra sua câmera." },
-              { icon: Server, title: "O Atalaia identifica automaticamente o equipamento através do protocolo ONVIF ou RTSP." },
+              { icon: Server, title: "O ServCam identifica automaticamente o equipamento através do protocolo ONVIF ou RTSP." },
               { icon: MapPin, title: "O usuário escolhe quais áreas deseja compartilhar." },
               { icon: Lock, title: "Define as permissões de acesso." },
               { icon: AlertTriangle, title: "Durante uma ocorrência, a Central localiza as câmeras próximas." },
@@ -287,7 +284,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
               Sinalização de Alto Impacto & <span className="text-atalaia-neon">Caixa de Sobrepor</span>
             </h2>
             <p className="text-gray-400 text-sm md:text-base leading-relaxed">
-              O Atalaia padroniza as instalações para garantir segurança física absoluta e inibição ativa. Em vez de postes expostos simples, as câmeras são montadas em conjuntos estruturados profissionais.
+              O ServCam padroniza as instalações para garantir segurança física absoluta e inibição ativa. Em vez de postes expostos simples, as câmeras são montadas em conjuntos estruturados profissionais.
             </p>
           </div>
 
@@ -296,7 +293,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
             {/* Esquerda: Imagem Real da Placa Oficial (Anexo do Usuário em Alta Qualidade) */}
             <div className="lg:col-span-6 flex flex-col items-center">
               <div className="mb-4 text-center">
-                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-1">Sinalização Oficial do Sistema Atalaia</span>
+                <span className="text-xs text-gray-400 font-bold uppercase tracking-widest block mb-1">Sinalização Oficial do Sistema</span>
                 <span className="text-[10px] text-atalaia-neon font-medium uppercase tracking-wider">Identidade de Segurança Integrada</span>
               </div>
               
@@ -304,7 +301,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
               <div className="relative rounded-[32px] overflow-hidden border-2 border-atalaia-neon/50 shadow-[0_0_50px_rgba(57,255,20,0.25)] group w-full max-w-[420px] aspect-[4/5]">
                 <img 
                   src={atalaiaWarningPlaqueImg} 
-                  alt="Placa Oficial do Sistema Atalaia" 
+                  alt="Placa Oficial do Sistema" 
                   className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
                   referrerPolicy="no-referrer"
                 />
@@ -365,7 +362,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
 
                 <div className="pt-4 border-t border-white/5 text-center lg:text-left">
                   <span className="text-[11px] text-gray-500 font-mono">
-                    * Padrão obrigatório para homologação na Rede Inteligente Atalaia.
+                    * Padrão obrigatório para homologação na Rede Inteligente ServCam.
                   </span>
                 </div>
               </div>
@@ -491,9 +488,9 @@ export const CollaborativeNetworkSection: React.FC = () => {
               <div className="bg-[#080808] border border-white/10 rounded-2xl p-6">
                 <h4 className="text-sm text-gray-300 font-bold mb-4">Quem poderá visualizar esta câmera?</h4>
                 <div className="grid grid-cols-2 gap-3">
-                  {['Central Atalaia', 'Polícia', 'Bombeiros', 'Defesa Civil', 'Guarda Municipal', 'Vizinhos autorizados', 'Vigilância do condomínio'].map(item => (
+                  {['Central de Monitoramento', 'Polícia', 'Bombeiros', 'Defesa Civil', 'Guarda Municipal', 'Vizinhos autorizados', 'Vigilância do condomínio'].map(item => (
                     <label key={item} className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer hover:text-white transition-colors">
-                      <input type="checkbox" defaultChecked={item === 'Central Atalaia'} className="accent-atalaia-neon" /> {item}
+                      <input type="checkbox" defaultChecked={item === 'Central de Monitoramento'} className="accent-atalaia-neon" /> {item}
                     </label>
                   ))}
                 </div>
@@ -583,7 +580,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
 
               <div className="flex flex-col items-center min-w-[80px]">
                 <div className="w-12 h-12 rounded-xl bg-[#111] border border-atalaia-neon/50 flex items-center justify-center mb-2 shadow-[0_0_15px_rgba(0,255,102,0.2)] text-atalaia-neon"><Server size={20} /></div>
-                <span className="text-[10px] uppercase font-bold text-atalaia-neon">Edge Atalaia</span>
+                <span className="text-[10px] uppercase font-bold text-atalaia-neon">Edge ServCam</span>
               </div>
               <ChevronRight size={16} className="text-atalaia-neon/50" />
 
@@ -637,7 +634,7 @@ export const CollaborativeNetworkSection: React.FC = () => {
             </div>
             <div>
               <h3 className="text-2xl font-bold text-white uppercase tracking-tight">Seja um Parceiro</h3>
-              <p className="text-sm text-gray-400">Junte-se à Rede Colaborativa Atalaia</p>
+              <p className="text-sm text-gray-400">Junte-se à Rede Colaborativa de Segurança</p>
             </div>
           </div>
 

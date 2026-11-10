@@ -94,7 +94,7 @@ const Login: React.FC = () => {
     setCouponSuccess(null);
     
     try {
-      // Usamos um ID temporário e seguro para simulação se o morador ainda não tiver criado a conta
+      // Usamos um ID temporário e seguro para simulação se o cliente ainda não tiver criado a conta
       const res = await MockService.validateCoupon(couponCodeIn, 'temp-register-id');
       if (res.success && res.coupon) {
         setAppliedCoupon(res.coupon);
@@ -129,7 +129,7 @@ const Login: React.FC = () => {
       }
       
       if (!targetUserId) {
-          setError("Perfil de morador não localizado. Faça o login para concluir a ativação.");
+          setError("Perfil de cliente não localizado. Faça o login para concluir a ativação.");
           setShowPromoRedirectModal(false);
           return;
       }

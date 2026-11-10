@@ -102,7 +102,7 @@ export const PaymentService = {
       }
     } catch (_) {}
 
-    // 3. Fallback de redirecionamento para o Checkout Seguro do Atalaia / Sandbox do Mercado Pago
+    // 3. Fallback de redirecionamento para o Checkout Seguro do ServCam / Sandbox do Mercado Pago
     const cleanOrigin = window.location.origin;
     const checkoutSandboxUrl = `${cleanOrigin}/#/payment-checkout?cameras=${opts.cameras || 1}&amount=${opts.amount || 24.90}&plan=${opts.planId || 'CUSTOM'}&coupon=${opts.couponCode || ''}`;
     console.warn("[PaymentService] Redirecionando para Checkout Sandbox Seguro:", checkoutSandboxUrl);

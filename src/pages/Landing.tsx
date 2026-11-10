@@ -43,16 +43,29 @@ const FitBounds: React.FC<FitBoundsProps> = ({ cameras }) => {
   const map = useMap();
 
   useEffect(() => {
-    if (!cameras || cameras.length === 0) return;
+    if (!cameras || !Array.isArray(cameras) || cameras.length === 0) return;
 
-    const validCameras = cameras.filter(cam => 
-      typeof cam.lat === 'number' && 
-      typeof cam.lng === 'number'
-    );
-    if (validCameras.length === 0) return;
+    try {
+      const validCameras = cameras.filter(cam => 
+        typeof cam?.lat === 'number' && 
+        typeof cam?.lng === 'number' &&
+        !isNaN(cam.lat) && !isNaN(cam.lng) &&
+        isFinite(cam.lat) && isFinite(cam.lng)
+      );
+      if (validCameras.length === 0) return;
 
-    const bounds = L.latLngBounds(validCameras.map(cam => [cam.lat, cam.lng]));
-    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      if (validCameras.length === 1) {
+        map.setView([validCameras[0].lat, validCameras[0].lng], Math.max(map.getZoom() || 14, 14));
+        return;
+      }
+
+      const bounds = L.latLngBounds(validCameras.map(cam => [cam.lat, cam.lng]));
+      if (bounds && typeof bounds.isValid === 'function' && bounds.isValid()) {
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+      }
+    } catch (err) {
+      console.warn('Erro ao ajustar limites no Landing:', err);
+    }
   }, [cameras, map]);
 
   return null;
@@ -108,7 +121,7 @@ const CameraPopup: React.FC<CameraPopupProps> = ({ cam, neighborhoodName }) => {
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${cam.lat}&lon=${cam.lng}&zoom=14&addressdetails=1`, {
           headers: {
-            'User-Agent': 'AtalaiaSecurityApp/1.0',
+            'User-Agent': 'ServCamApp/1.0',
             'Accept-Language': 'pt-BR'
           }
         });
@@ -173,7 +186,7 @@ const CameraPopup: React.FC<CameraPopupProps> = ({ cam, neighborhoodName }) => {
       </div>
       <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
         <MapPin size={12} className="text-zinc-400 shrink-0" />
-        <span className="truncate">Poste Atalaia de Segurança</span>
+        <span className="truncate">Poste de Monitoramento Inteligente</span>
       </div>
       <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/60 rounded-md p-2.5 border border-emerald-200/80 text-center mt-1 w-full box-border shadow-sm relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-500"></div>
@@ -181,7 +194,7 @@ const CameraPopup: React.FC<CameraPopupProps> = ({ cam, neighborhoodName }) => {
           <ShieldCheck size={14} className="text-emerald-500 animate-pulse drop-shadow-sm" /> ACESSO RESTRITO
         </p>
         <p className="text-[9px] text-emerald-700/90 leading-relaxed m-0 font-medium whitespace-normal break-words">
-          Imagens ao vivo exclusivas para moradores cadastrados na plataforma.
+          Imagens ao vivo exclusivas para clientes cadastrados na plataforma.
         </p>
       </div>
     </div>
@@ -299,7 +312,7 @@ const Landing: React.FC = () => {
     printWindow.document.write(`
       <html>
         <head>
-          <title>Impressão de Placa Atalaia</title>
+          <title>Impressão de Placa ServCam</title>
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
@@ -464,7 +477,7 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Propaganda Atalaia Segurança Colaborativa - Leve para o seu bairro */}
+      {/* Propaganda ServCam Segurança Colaborativa - Leve para o seu bairro */}
       <section className="py-20 bg-gradient-to-b from-[#010101] via-[#031d0f] to-[#010101] border-y border-atalaia-neon/30 relative overflow-hidden print:hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] bg-atalaia-neon/15 rounded-full blur-[160px] pointer-events-none" />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
@@ -472,21 +485,19 @@ const Landing: React.FC = () => {
             <ShieldCheck size={16} /> Segurança Colaborativa Inteligente
           </div>
           <h2 className="text-3xl md:text-5xl lg:text-6xl font-black text-white mb-6 tracking-tight">
-            Leve o <span className="text-atalaia-neon">Atalaia</span> para o <br />seu Bairro
+            Leve o <span className="text-atalaia-neon">ServCam</span> para o <br />seu Bairro
           </h2>
           <p className="text-gray-300 text-base md:text-xl max-w-3xl mx-auto mb-10 leading-relaxed font-medium">
             Transforme câmeras comuns em uma rede de proteção inteligente integrada com vizinhos, vigilantes e forças de segurança. Proteja sua rua com tecnologia de ponta, gravação em nuvem e alertas instantâneos no WhatsApp.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a 
-              href="https://atalaia.cloud" 
-              target="_blank" 
-              rel="noopener noreferrer"
+            <button 
+              onClick={() => setContactModalOpen(true)} 
               className="px-8 py-4 bg-atalaia-neon text-black font-black uppercase tracking-wider rounded-xl hover:bg-emerald-400 transition-all duration-300 shadow-[0_0_25px_rgba(0,255,102,0.4)] hover:shadow-[0_0_35px_rgba(0,255,102,0.7)] flex items-center gap-3 transform hover:-translate-y-1"
             >
-              <span>Conhecer o Sistema</span>
+              <span>Conhecer a Plataforma</span>
               <ShieldCheck size={20} />
-            </a>
+            </button>
           </div>
         </div>
       </section>
@@ -580,7 +591,7 @@ const Landing: React.FC = () => {
                 </h2>
                 
                 <p className="text-gray-300 text-sm sm:text-base leading-relaxed">
-                  O sistema <strong className="text-white font-bold">Atalaia</strong> utiliza os servidores <strong className="text-atalaia-neon font-bold">ServCam</strong>, de propriedade da <strong className="text-white font-bold">Alien Sistemas de Segurança Eletrônica</strong>, garantindo máxima estabilidade, baixíssima latência na transmissão de vídeo ao vivo, segurança da informação e alta disponibilidade 24 horas por dia.
+                  A plataforma <strong className="text-white font-bold">ServCam</strong>, desenvolvida e operada com infraestrutura de ponta da <strong className="text-white font-bold">Alien Sistemas de Segurança Eletrônica</strong>, garante máxima estabilidade, baixíssima latência na transmissão de vídeo ao vivo, segurança da informação e alta disponibilidade 24 horas por dia.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
@@ -892,7 +903,7 @@ const Landing: React.FC = () => {
       >
         <div className="flex flex-col items-end leading-tight">
           <span className="text-[10px] font-black uppercase tracking-widest opacity-90">Estamos online</span>
-          <span className="text-sm font-bold">Suporte Atalaia</span>
+          <span className="text-sm font-bold">Suporte ServCam</span>
         </div>
         <div className="relative">
             <div className="absolute inset-0 bg-white rounded-full animate-ping opacity-20"></div>

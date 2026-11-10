@@ -670,7 +670,7 @@ const CalculatorAdmin: React.FC = () => {
 
                     <div>
                       <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider block mb-1.5">
-                        Descrição para o Morador
+                        Descrição para o Cliente
                       </label>
                       <textarea
                         rows={2}
@@ -1879,7 +1879,7 @@ const CalculatorAdmin: React.FC = () => {
                 type="text"
                 value={newAi.highlight || ''}
                 onChange={(e) => setNewAi(p => ({ ...p, highlight: e.target.value }))}
-                placeholder="Ex: Alerta imediato caso um morador caia no quintal."
+                placeholder="Ex: Alerta imediato caso um cliente caia no quintal."
                 className="w-full bg-zinc-900 border border-white/10 rounded-xl p-2.5 text-white text-sm"
               />
             </div>

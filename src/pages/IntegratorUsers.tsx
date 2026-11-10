@@ -104,7 +104,7 @@ const IntegratorUsers: React.FC = () => {
       }
 
       if (!base64) {
-        throw new Error("Comprovante não encontrado. O morador precisa anexá-lo novamente.");
+        throw new Error("Comprovante não encontrado. O cliente precisa anexá-lo novamente.");
       }
 
       if (action === 'view') {
@@ -137,7 +137,7 @@ const IntegratorUsers: React.FC = () => {
   const [editPhone, setEditPhone] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editHoodId, setEditHoodId] = useState('');
-  const [editSecondaryHoodId, setEditSecondaryHoodId] = useState('');
+  const [editAdditionalHoods, setEditAdditionalHoods] = useState<string[]>([]);
   const [editIntegratorId, setEditIntegratorId] = useState('');
   const [editPlan, setEditPlan] = useState<string>('PREMIUM');
   const [editRole, setEditRole] = useState<UserRole>(UserRole.RESIDENT);
@@ -159,7 +159,7 @@ const IntegratorUsers: React.FC = () => {
   const [newPhone, setNewPhone] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [newHoodId, setNewHoodId] = useState('');
-  const [newSecondaryHoodId, setNewSecondaryHoodId] = useState('');
+  const [newAdditionalHoods, setNewAdditionalHoods] = useState<string[]>([]);
   const [newIntegratorId, setNewIntegratorId] = useState('');
   const [newPlan, setNewPlan] = useState<UserPlan>('PREMIUM');
   const [newRole, setNewRole] = useState<UserRole>(UserRole.RESIDENT);
@@ -441,7 +441,7 @@ const IntegratorUsers: React.FC = () => {
           setNewIntegratorId(adminFilterIntegrator || '');
           setNewHoodId(adminFilterHood || neighborhoods[0]?.id || '');
       }
-      setNewSecondaryHoodId('');
+      setNewAdditionalHoods([]);
 
       // Initialize with integrator's default plan settings
       let defaultPrice = user?.singlePlanPrice ? String(user.singlePlanPrice) : '49,90';
@@ -496,7 +496,8 @@ const IntegratorUsers: React.FC = () => {
               plan: newPlan,
               role: newRole,
               neighborhoodId: newHoodId || undefined,
-              secondaryNeighborhoodId: newSecondaryHoodId || undefined,
+              secondaryNeighborhoodId: newAdditionalHoods[0] || undefined,
+              additionalNeighborhoodIds: newAdditionalHoods,
               integratorId: targetIntegratorId,
               integratorName: targetIntegratorName,
               approved: newApproved,
@@ -645,7 +646,8 @@ const IntegratorUsers: React.FC = () => {
               address: editAddress,
               neighborhood_id: editHoodId || null,
               primary_neighborhood_id: editHoodId || null,
-              secondary_neighborhood_id: editSecondaryHoodId || null,
+              secondary_neighborhood_id: editAdditionalHoods[0] || null,
+              additional_neighborhood_ids: editAdditionalHoods,
               integrator_id: targetIntegratorId,
               integrator_name: targetIntegratorName || null,
               plan: editPlan,
@@ -1328,7 +1330,7 @@ const IntegratorUsers: React.FC = () => {
                                             setEditPhone(resident.phone || ''); 
                                             setEditAddress(resident.address && !resident.address.trim().startsWith('{') ? resident.address : '');
                                             setEditHoodId(resident.neighborhoodId || ''); 
-                                            setEditSecondaryHoodId(resident.secondaryNeighborhoodId || '');
+                                            setEditAdditionalHoods(resident.additionalNeighborhoodIds || (resident.secondaryNeighborhoodId ? [resident.secondaryNeighborhoodId] : []));
                                             setEditIntegratorId(resident.integratorId || (user?.role === UserRole.INTEGRATOR ? user.id : ''));
                                             setEditPlan(resident.plan || 'PREMIUM'); 
                                             setEditRole(resident.role); 
@@ -1456,7 +1458,7 @@ const IntegratorUsers: React.FC = () => {
                         <div>
                             <label className="text-[10px] text-gray-500 uppercase font-black mb-1 block">Papel</label>
                             <select className="w-full bg-black border border-white/10 rounded-xl p-3.5 text-white text-sm" value={newRole} onChange={e => setNewRole(e.target.value as UserRole)}>
-                                <option value={UserRole.RESIDENT}>Cliente (Morador)</option>
+                                <option value={UserRole.RESIDENT}>Cliente</option>
                                 <option value={UserRole.SCR}>Motovigia (SCR)</option>
                                 {user?.role === UserRole.ADMIN && (
                                     <>
@@ -1476,20 +1478,38 @@ const IntegratorUsers: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-4">
                         <div>
-                            <label className="text-[10px] text-gray-500 uppercase font-black mb-1 block">Bairro / Sistema Principal</label>
+                            <label className="text-[10px] text-gray-500 uppercase font-black mb-1 block">Sistema Principal</label>
                             <select className="w-full bg-black border border-white/10 rounded-xl p-3.5 text-white text-sm" value={newHoodId} onChange={e => setNewHoodId(e.target.value)}>
-                                <option value="">Sem Bairro</option>
+                                <option value="">Sem Sistema</option>
                                 {neighborhoods.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-[10px] text-gray-500 uppercase font-black mb-1 block">Bairro Secundário (Opcional)</label>
-                            <select className="w-full bg-black border border-white/10 rounded-xl p-3.5 text-white text-sm" value={newSecondaryHoodId} onChange={e => setNewSecondaryHoodId(e.target.value)}>
-                                <option value="">Sem Bairro Secundário</option>
-                                {neighborhoods.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                            </select>
+                            <label className="text-[10px] text-gray-500 uppercase font-black mb-1.5 block">Novos Sistemas / Sistemas Adicionais (Múltiplos Vínculos)</label>
+                            <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 bg-black border border-white/10 rounded-xl">
+                                {neighborhoods.map(h => {
+                                    const isChecked = newAdditionalHoods.includes(h.id);
+                                    return (
+                                        <label key={h.id} className="flex items-center gap-2 p-1.5 hover:bg-white/5 rounded-lg cursor-pointer text-xs text-white">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={isChecked} 
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setNewAdditionalHoods([...newAdditionalHoods, h.id]);
+                                                    } else {
+                                                        setNewAdditionalHoods(newAdditionalHoods.filter(id => id !== h.id));
+                                                    }
+                                                }}
+                                                className="accent-atalaia-neon"
+                                            />
+                                            <span>🏢 {h.name}</span>
+                                        </label>
+                                    );
+                                })}
+                            </div>
                         </div>
                     </div>
 
@@ -1908,18 +1928,36 @@ const IntegratorUsers: React.FC = () => {
                         </select>
                     </div>
                     <div>
-                        <label className="text-[10px] text-gray-500 uppercase font-black mb-1 block">Bairro / Sistema</label>
+                        <label className="text-[10px] text-gray-500 uppercase font-black mb-1 block">Sistema Principal</label>
                         <select className="w-full bg-black border border-white/10 rounded-xl p-4 text-white" value={editHoodId} onChange={e => setEditHoodId(e.target.value)}>
-                            <option value="">Sem Bairro</option>
+                            <option value="">Sem Sistema</option>
                             {neighborhoods.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
                         </select>
                     </div>
                     <div>
-                        <label className="text-[10px] text-gray-500 uppercase font-black mb-1 block">Bairro Secundário (Opcional - Duplo Acesso)</label>
-                        <select className="w-full bg-black border border-white/10 rounded-xl p-4 text-white" value={editSecondaryHoodId} onChange={e => setEditSecondaryHoodId(e.target.value)}>
-                            <option value="">Sem Bairro Secundário</option>
-                            {neighborhoods.map(h => <option key={h.id} value={h.id}>{h.name}</option>)}
-                        </select>
+                        <label className="text-[10px] text-gray-500 uppercase font-black mb-1.5 block">Novos Sistemas / Sistemas Adicionais (Múltiplos Vínculos)</label>
+                        <div className="max-h-36 overflow-y-auto space-y-1.5 p-2 bg-black border border-white/10 rounded-xl">
+                            {neighborhoods.map(h => {
+                                const isChecked = editAdditionalHoods.includes(h.id);
+                                return (
+                                    <label key={h.id} className="flex items-center gap-2 p-1.5 hover:bg-white/5 rounded-lg cursor-pointer text-xs text-white">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={isChecked} 
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setEditAdditionalHoods([...editAdditionalHoods, h.id]);
+                                                } else {
+                                                    setEditAdditionalHoods(editAdditionalHoods.filter(id => id !== h.id));
+                                                }
+                                            }}
+                                            className="accent-atalaia-neon"
+                                        />
+                                        <span>🏢 {h.name}</span>
+                                    </label>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* PRIVILÉGIOS DE ACESSO (LEITURA E EDIÇÃO) */}

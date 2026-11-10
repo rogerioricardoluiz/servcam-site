@@ -56,7 +56,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) =
       description: 'O monitoramento mais completo',
       features: [
         'Todos os recursos do Plano Família',
-        'Atalaia Móvel (Botão de Pânico 24h)',
+        'ServCam Móvel (Botão de Pânico 24h)',
         'Segurança dedicada via WhatsApp',
         'Prioridade máxima em ocorrências'
       ],
@@ -71,7 +71,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) =
       <div className="p-6 md:p-8">
         <div className="text-center mb-10">
           <Badge color="yellow" className="mb-4">⚡ Upgrade Necessário</Badge>
-          <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-2">Desbloqueie o Atalaia</h2>
+          <h2 className="text-3xl font-black text-white italic uppercase tracking-tighter mb-2">Desbloqueie o ServCam</h2>
           <p className="text-gray-400 text-sm">Escolha o plano ideal para a sua segurança e a de seus familiares.</p>
         </div>
 

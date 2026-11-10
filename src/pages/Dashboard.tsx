@@ -64,13 +64,25 @@ const MapResizer = () => {
 const MapBoundsSetter: React.FC<{ cameras: Camera[] }> = ({ cameras }) => {
     const map = useMap();
     useEffect(() => {
-        if (cameras && cameras.length > 0) {
-            const points = cameras.filter(c => c.lat !== undefined && c.lng !== undefined).map(c => [c.lat!, c.lng!] as [number, number]);
-            if (points.length > 0) {
-                const bounds = L.latLngBounds(points);
-                // Use a slightly larger padding and a sensible maxZoom to focus
+        if (!cameras || !Array.isArray(cameras) || cameras.length === 0) return;
+        try {
+            const points = cameras
+                .filter(c => typeof c?.lat === 'number' && typeof c?.lng === 'number' && !isNaN(c.lat) && !isNaN(c.lng) && isFinite(c.lat) && isFinite(c.lng))
+                .map(c => [c.lat!, c.lng!] as [number, number]);
+
+            if (points.length === 0) return;
+
+            if (points.length === 1) {
+                map.setView(points[0], Math.max(map.getZoom() || 14, 15));
+                return;
+            }
+
+            const bounds = L.latLngBounds(points);
+            if (bounds && typeof bounds.isValid === 'function' && bounds.isValid()) {
                 map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
             }
+        } catch (err) {
+            console.warn('Erro ao ajustar limites do mapa no Dashboard:', err);
         }
     }, [cameras, map]);
     return null;
@@ -201,7 +213,7 @@ const CameraPopupContent: React.FC<{ cam: Camera; onUpgrade: () => void }> = ({ 
           </button>
       </div>
       <div className="mt-2 text-[9px] text-gray-500 italic text-center">
-          {showLive ? (isFreeResident ? '🔒 Plano Premium Requerido' : 'Monitoramento em tempo real Atalaia') : 'Localização física do poste de monitoramento'}
+          {showLive ? (isFreeResident ? '🔒 Plano Premium Requerido' : 'Monitoramento em tempo real ServCam') : 'Localização física do poste de monitoramento'}
       </div>
     </div>
   );
@@ -242,7 +254,7 @@ const SCRDashboard = ({ user, neighborhood }: { user: User, neighborhood?: Neigh
                   // Pre-load residents for selector
                   const users = await MockService.getUsers(user.neighborhoodId);
                   
-                  // FILTRO: Mostrar TODOS os moradores do bairro no seletor para o Motovigia, alertando se é Premium ou Regular
+                  // FILTRO: Mostrar TODOS os clientes do bairro no seletor para o Motovigia, alertando se é Premium ou Regular
                   setResidents(users.filter(u => u.role === UserRole.RESIDENT));
              }
         };
@@ -326,7 +338,7 @@ const SCRDashboard = ({ user, neighborhood }: { user: User, neighborhood?: Neigh
                 setPatrolLoading(false);
             }
         } catch (e) {
-            showToast("Erro de processamento no banco Atalaia.", 'error');
+            showToast("Erro de processamento no banco de dados.", 'error');
             setPatrolLoading(false);
         }
     };
@@ -389,10 +401,10 @@ const SCRDashboard = ({ user, neighborhood }: { user: User, neighborhood?: Neigh
                 <Modal isOpen={isResidentModalOpen} onClose={() => setIsResidentModalOpen(false)}>
                     <div className="p-5 font-sans">
                         <h2 className="text-lg font-black text-white uppercase tracking-tight mb-1 flex items-center gap-2">
-                            <Users size={20} className="text-atalaia-neon" /> Vincular e Notificar Morador
+                            <Users size={20} className="text-atalaia-neon" /> Vincular e Notificar Cliente
                         </h2>
                         <p className="text-zinc-400 text-xs mb-5">
-                            Selecione o morador correspondente. O sistema irá registrar o log da ronda e enviar um alerta completo de imediato via **WhatsApp** para proteger e notificar o morador.
+                            Selecione o cliente correspondente. O sistema irá registrar o log da ronda e enviar um alerta completo de imediato via **WhatsApp** para proteger e notificar o cliente.
                         </p>
 
                         <div className="relative mb-4">
@@ -428,7 +440,7 @@ const SCRDashboard = ({ user, neighborhood }: { user: User, neighborhood?: Neigh
                                     </div>
                                 </div>
                             ))}
-                            {filteredResidents.length === 0 && <p className="text-center text-zinc-500 py-6 text-xs">Nenhum morador localizado com este termo.</p>}
+                            {filteredResidents.length === 0 && <p className="text-center text-zinc-500 py-6 text-xs">Nenhum cliente localizado com este termo.</p>}
                         </div>
 
                         <Button onClick={() => confirmAction(undefined)} variant="outline" className="w-full uppercase text-xs tracking-wider py-3 rounded-xl">
@@ -1141,7 +1153,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   <div>
                       <h4 className="font-bold text-sm text-yellow-500 flex items-center gap-1.5">
-                          Atalaia - Período de Testes do Plano Família
+                          ServCam - Período de Testes do Plano Família
                       </h4>
                       <p className="text-xs text-zinc-300 mt-0.5">
                           Você ainda tem <strong>{getDaysRemaining()} {getDaysRemaining() === 1 ? 'dia' : 'dias'}</strong> de teste para desfrutar de toda a segurança premium!
@@ -1184,12 +1196,12 @@ const Dashboard: React.FC = () => {
                       <AlertTriangle size={20} />
                   </div>
                   <div>
-                      <h4 className="font-bold text-sm text-white">Pendência de Segurança: Contrato de Adesão</h4>
-                      <p className="text-xs text-zinc-400 mt-0.5">O contrato Atalaia SaaS está pendente de sua assinatura eletrônica ativa e verificação digital.</p>
+                      <h4 className="font-bold text-sm text-white">Pendência de Segurança: Contrato de Prestação de Serviços</h4>
+                      <p className="text-xs text-zinc-400 mt-0.5">O contrato ServCam SaaS está pendente de sua assinatura eletrônica ativa e verificação digital.</p>
                   </div>
               </div>
               <a 
-                  href="#contrato-adesao-morador" 
+                  href="#contrato-adesao-cliente" 
                   className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-black font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shrink-0 text-center"
               >
                   Assinar Agora
@@ -1583,7 +1595,13 @@ const Dashboard: React.FC = () => {
               </div>
             ) : (
               <MapContainer 
-                center={user?.lat && user?.lng ? [user.lat, user.lng] : myNeighborhood?.lat && myNeighborhood?.lng ? [myNeighborhood.lat, myNeighborhood.lng] : [-27.5969, -48.5495]} 
+                center={
+                  (typeof user?.lat === 'number' && typeof user?.lng === 'number' && isFinite(user.lat) && isFinite(user.lng)) 
+                    ? [user.lat, user.lng] 
+                    : (typeof myNeighborhood?.lat === 'number' && typeof myNeighborhood?.lng === 'number' && isFinite(myNeighborhood.lat) && isFinite(myNeighborhood.lng))
+                      ? [myNeighborhood.lat, myNeighborhood.lng]
+                      : [-27.5969, -48.5495]
+                } 
                 zoom={14} 
                 style={{ height: '100%', width: '100%', background: '#0a0a0a' }}
                 scrollWheelZoom={true}
@@ -1602,7 +1620,7 @@ const Dashboard: React.FC = () => {
                 />
                 
                 {cameras.map((cam) => (
-                  cam.lat && cam.lng && (
+                  (typeof cam.lat === 'number' && typeof cam.lng === 'number' && isFinite(cam.lat) && isFinite(cam.lng)) && (
                     <Marker key={`cam-${cam.id}`} position={[cam.lat, cam.lng]} icon={CameraIcon}>
                       <Popup className="text-black" minWidth={300}>
                         <CameraPopupContent cam={cam} onUpgrade={() => setShowUpgradeModal(true)} />

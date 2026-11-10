@@ -70,10 +70,10 @@ const CollaborativeNetwork: React.FC = () => {
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-6">
                 <ShieldCheck className="text-atalaia-neon h-6 w-6" />
-                <span className="text-xl font-bold tracking-tight text-white">ATALAIA</span>
+                <span className="text-xl font-bold tracking-tight text-white">SERVCAM</span>
               </div>
               <p className="text-gray-400 leading-relaxed mb-6 max-w-sm">
-                A primeira plataforma de vigilância digital com IA do Brasil. Monitore, alerte e proteja o que mais importa com a tecnologia Atalaia.
+                A primeira plataforma de vigilância digital com IA do Brasil. Monitore, alerte e proteja o que mais importa com a tecnologia ServCam.
               </p>
               <div className="flex space-x-4">
                 <a href="#" className="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center text-gray-400 hover:bg-atalaia-neon hover:text-black transition-all">

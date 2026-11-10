@@ -113,7 +113,7 @@ const Alerts: React.FC = () => {
           const hood = user?.neighborhoodId ? (await MockService.getNeighborhoodById(user.neighborhoodId))?.name : 'Geral';
           const finalMsg = content
             .replace('{{name}}', user?.name || 'Usuário')
-            .replace('{{hood}}', hood || 'Atalaia')
+            .replace('{{hood}}', hood || 'Bairro Monitorado')
             .replace('{{time}}', new Date().toLocaleTimeString());
 
           await MockService.createAlert({
@@ -321,7 +321,7 @@ const Alerts: React.FC = () => {
                             Disparar Mensagem
                         </h3>
                         <p className="text-xs text-zinc-400 mb-6 leading-relaxed font-sans">
-                            Confirmar envio imediato do template <span className="text-white font-bold">"{keyToSend.replace(/_/g, ' ')}"</span> para todos os moradores do seu bairro?
+                            Confirmar envio imediato do template <span className="text-white font-bold">"{keyToSend.replace(/_/g, ' ')}"</span> para todos os clientes do seu bairro?
                         </p>
                         <div className="flex items-center gap-3">
                             <button

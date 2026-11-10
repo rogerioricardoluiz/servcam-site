@@ -59,7 +59,7 @@ const Terms: React.FC = () => {
             <section>
                 <h2 className="text-xl font-bold text-white mb-4">4. Limitação de Responsabilidade</h2>
                 <p className="text-sm leading-relaxed">
-                    O Atalaia é um software de comunicação e visualização. Nós <strong>não garantimos</strong> a prevenção de crimes, nem nos responsabilizamos por falhas de internet, falta de energia ou indisponibilidade de câmeras que impeçam o monitoramento. 
+                    A plataforma ServCam é um software de comunicação e visualização. Nós <strong>não garantimos</strong> a prevenção de crimes, nem nos responsabilizamos por falhas de internet, falta de energia ou indisponibilidade de câmeras que impeçam o monitoramento. 
                     A segurança física é responsabilidade das autoridades competentes.
                 </p>
             </section>
