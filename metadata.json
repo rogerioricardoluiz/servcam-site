@@ -1,5 +1,5 @@
 {
-  "name": "Atalaia Segurança Colaborativa",
-  "description": "Sistema avançado de segurança comunitária com monitoramento de câmeras em tempo real, alertas de pânico e integração com WhatsApp.",
+  "name": "ServCam - Segurança Colaborativa",
+  "description": "Sistema avançado de monitoramento e gravação de câmeras em nuvem, segurança colaborativa, alertas e inteligência artificial.",
   "requestFramePermissions": ["geolocation", "camera"]
 }

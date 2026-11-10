@@ -2414,7 +2414,27 @@ export const MockService = {
     const targetUrl = (customUrl || config.url || "https://whatsapp.alienmonitoramento.com.br:443/backend/api/messages/send").trim();
     const targetToken = (customToken || config.token || "HSYumH8GyDXc90Bb1ZcBoVMBjatynktt").trim();
 
-    // 1. Try calling the backend Node.js proxy first (if running full-stack)
+    // 1. Try calling the PHP proxy script first (for cPanel static hosting with PHP support)
+    try {
+      const phpProxyRes = await fetch('/whatsapp_proxy.php', {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: numbers[0],
+          body: message,
+          url: targetUrl,
+          token: targetToken
+        })
+      });
+      if (phpProxyRes.ok) {
+        const phpData = await phpProxyRes.json();
+        if (phpData.success) {
+          return { success: true, results: numbers.map(n => ({ target: n, success: true })) };
+        }
+      }
+    } catch (_) {}
+
+    // 2. Try calling the backend Node.js proxy first (if running full-stack)
     try {
       const proxyRes = await fetch('/api/whatsapp/send', {
         method: "POST",
@@ -2434,7 +2454,7 @@ export const MockService = {
         }
       }
     } catch (_) {
-      // Backend proxy not available (static cPanel hosting), proceed to direct fetch
+      // Backend proxy not available, proceed to direct fetch
     }
 
     // 2. Direct client-side fetch to Whaticket API
