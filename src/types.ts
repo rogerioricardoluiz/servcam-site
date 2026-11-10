@@ -53,6 +53,7 @@ export interface User {
   recordingDays?: number;
   customClause?: string;
   customSlug?: string;
+  billingAuthorizationService?: string;
 }
 
 export interface Coupon {

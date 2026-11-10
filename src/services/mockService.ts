@@ -1290,6 +1290,8 @@ export const MockService = {
     hasCameraRental?: boolean;
     cameraRentalDetails?: string;
     recordingDays?: number;
+    billingAuthorizationService?: string;
+    billing_authorization_service?: string;
   }): Promise<User> => {
     const cleanEmail = payload.email.trim().toLowerCase();
     const password = payload.password && payload.password.trim().length >= 6 ? payload.password.trim() : '123456';
@@ -1374,10 +1376,20 @@ export const MockService = {
           additional_neighborhood_ids: payload.additionalNeighborhoodIds || [],
           approved: isApproved,
           can_read: canRead,
-          can_edit: canEdit
+          can_edit: canEdit,
+          billing_authorization_service: payload.billingAuthorizationService || payload.billing_authorization_service || ''
         };
 
-        await supabase.from('profiles').upsert(dbPayload, { onConflict: 'id' });
+        const { error: upsertErr } = await supabase.from('profiles').upsert(dbPayload, { onConflict: 'id' });
+        if (upsertErr) {
+          console.warn('[createClientUser] Falha no upsert inicial, tentando fallback sem colunas estendidas:', upsertErr);
+          const fallbackPayload = { ...dbPayload };
+          delete fallbackPayload.billing_authorization_service;
+          delete fallbackPayload.additional_neighborhood_ids;
+          delete fallbackPayload.secondary_neighborhood_id;
+          delete fallbackPayload.primary_neighborhood_id;
+          await supabase.from('profiles').upsert(fallbackPayload, { onConflict: 'id' });
+        }
       } catch (err) {
         console.warn('[createClientUser] Fallback para registro complementar em system_settings:', err);
       }
@@ -1405,7 +1417,8 @@ export const MockService = {
       singlePlanPrice: payload.singlePlanPrice,
       hasCameraRental: payload.hasCameraRental,
       cameraRentalDetails: payload.cameraRentalDetails,
-      recordingDays: payload.recordingDays
+      recordingDays: payload.recordingDays,
+      billingAuthorizationService: payload.billingAuthorizationService || payload.billing_authorization_service
     };
 
     // Save in local profile cache & custom clients registry
@@ -1606,6 +1619,7 @@ export const MockService = {
                 neighborhoodId: hoodId,
                 primaryNeighborhoodId: p.primary_neighborhood_id || hoodId || localData.primaryNeighborhoodId,
                 secondaryNeighborhoodId: p.secondary_neighborhood_id || localData.secondaryNeighborhoodId,
+                additionalNeighborhoodIds: p.additional_neighborhood_ids || localData.additionalNeighborhoodIds || [],
                 integratorId: intInfo?.integratorId,
                 integratorName: intInfo?.integratorName,
                 phone: p.phone || localData.phone,
@@ -1624,13 +1638,25 @@ export const MockService = {
                 singlePlanPrice: localData.singlePlanPrice,
                 hasCameraRental: localData.hasCameraRental,
                 cameraRentalDetails: localData.cameraRentalDetails,
-                recordingDays: localData.recordingDays
+                recordingDays: localData.recordingDays,
+                billingAuthorizationService: p.billing_authorization_service || localData.billingAuthorizationService || localData.billing_authorization_service || ''
             });
         });
 
         // Merge custom clients created by Integrators/Admins that may not be in public.profiles yet
         Object.values(customRegistry).forEach((c: any) => {
             if (!c || !c.id) return;
+            const existingInMap = resultMap.get(c.id);
+            if (existingInMap) {
+              if (!existingInMap.integratorId && c.integratorId) {
+                existingInMap.integratorId = c.integratorId;
+                existingInMap.integratorName = c.integratorName;
+              }
+              if (c.billingAuthorizationService || c.billing_authorization_service) {
+                existingInMap.billingAuthorizationService = c.billingAuthorizationService || c.billing_authorization_service;
+              }
+              return;
+            }
             // Avoid duplicating by email if already in resultMap
             const existingByEmail = Array.from(resultMap.values()).find(
               u => u.email && c.email && u.email.toLowerCase() === c.email.toLowerCase()
@@ -1639,6 +1665,9 @@ export const MockService = {
               if (!existingByEmail.integratorId && c.integratorId) {
                 existingByEmail.integratorId = c.integratorId;
                 existingByEmail.integratorName = c.integratorName;
+              }
+              if (c.billingAuthorizationService || c.billing_authorization_service) {
+                existingByEmail.billingAuthorizationService = c.billingAuthorizationService || c.billing_authorization_service;
               }
               return;
             }
@@ -1655,6 +1684,7 @@ export const MockService = {
               neighborhoodId: c.neighborhoodId,
               primaryNeighborhoodId: c.primaryNeighborhoodId || c.neighborhoodId,
               secondaryNeighborhoodId: c.secondaryNeighborhoodId,
+              additionalNeighborhoodIds: c.additionalNeighborhoodIds || [],
               integratorId: intInfo?.integratorId || c.integratorId,
               integratorName: intInfo?.integratorName || c.integratorName,
               phone: c.phone,
@@ -1667,7 +1697,8 @@ export const MockService = {
               singlePlanPrice: c.singlePlanPrice,
               hasCameraRental: c.hasCameraRental,
               cameraRentalDetails: c.cameraRentalDetails,
-              recordingDays: c.recordingDays
+              recordingDays: c.recordingDays,
+              billingAuthorizationService: c.billingAuthorizationService || c.billing_authorization_service || ''
             });
         });
 
@@ -1685,6 +1716,7 @@ export const MockService = {
                             const intInfo = resolveIntegratorForUser(u.id, u.neighborhoodId, u);
                             localUsers.push({
                               ...u,
+                              billingAuthorizationService: u.billingAuthorizationService || u.billing_authorization_service || '',
                               integratorId: intInfo?.integratorId,
                               integratorName: intInfo?.integratorName
                             });
@@ -1716,6 +1748,13 @@ export const MockService = {
           const targetKey = `atalaia_local_profile_${userId}`;
           const currentStr = localStorage.getItem(targetKey);
           let profileObj = currentStr ? JSON.parse(currentStr) : { id: userId };
+          
+          const billingAuth = data.billing_authorization_service !== undefined 
+              ? data.billing_authorization_service 
+              : (data.billingAuthorizationService !== undefined 
+                  ? data.billingAuthorizationService 
+                  : (profileObj.billingAuthorizationService || profileObj.billing_authorization_service || ''));
+
           profileObj = {
               ...profileObj,
               name: data.name !== undefined ? data.name : profileObj.name,
@@ -1725,6 +1764,7 @@ export const MockService = {
               neighborhoodId: data.neighborhood_id !== undefined ? (data.neighborhood_id || undefined) : profileObj.neighborhoodId,
               primaryNeighborhoodId: data.primary_neighborhood_id !== undefined ? (data.primary_neighborhood_id || undefined) : profileObj.primaryNeighborhoodId,
               secondaryNeighborhoodId: data.secondary_neighborhood_id !== undefined ? (data.secondary_neighborhood_id || undefined) : profileObj.secondaryNeighborhoodId,
+              additionalNeighborhoodIds: data.additional_neighborhood_ids !== undefined ? data.additional_neighborhood_ids : (data.additionalNeighborhoodIds !== undefined ? data.additionalNeighborhoodIds : (profileObj.additionalNeighborhoodIds || [])),
               integratorId: data.integrator_id !== undefined ? (data.integrator_id || undefined) : profileObj.integratorId,
               integratorName: data.integrator_name !== undefined ? (data.integrator_name || undefined) : profileObj.integratorName,
               plan: data.plan !== undefined ? data.plan : profileObj.plan,
@@ -1737,19 +1777,19 @@ export const MockService = {
               singlePlanPrice: data.singlePlanPrice !== undefined ? data.singlePlanPrice : (data.single_plan_price !== undefined ? data.single_plan_price : profileObj.singlePlanPrice),
               hasCameraRental: data.hasCameraRental !== undefined ? data.hasCameraRental : (data.has_camera_rental !== undefined ? data.has_camera_rental : profileObj.hasCameraRental),
               cameraRentalDetails: data.cameraRentalDetails !== undefined ? data.cameraRentalDetails : (data.camera_rental_details !== undefined ? data.camera_rental_details : profileObj.cameraRentalDetails),
-              recordingDays: data.recordingDays !== undefined ? data.recordingDays : (data.recording_days !== undefined ? data.recording_days : profileObj.recordingDays)
+              recordingDays: data.recordingDays !== undefined ? data.recordingDays : (data.recording_days !== undefined ? data.recording_days : profileObj.recordingDays),
+              billingAuthorizationService: billingAuth,
+              billing_authorization_service: billingAuth
           };
           localStorage.setItem(targetKey, JSON.stringify(profileObj));
 
           try {
               const rawReg = localStorage.getItem('atalaia_custom_clients_registry');
               const regMap: Record<string, any> = rawReg ? JSON.parse(rawReg) : {};
-              if (regMap[userId]) {
-                  regMap[userId] = { ...regMap[userId], ...profileObj };
-                  localStorage.setItem('atalaia_custom_clients_registry', JSON.stringify(regMap));
-                  if (isRealSupabase) {
-                      MockService.updateSetting('custom_clients_registry', JSON.stringify(regMap)).catch(() => {});
-                  }
+              regMap[userId] = { ...(regMap[userId] || {}), ...profileObj };
+              localStorage.setItem('atalaia_custom_clients_registry', JSON.stringify(regMap));
+              if (isRealSupabase) {
+                  MockService.updateSetting('custom_clients_registry', JSON.stringify(regMap)).catch(() => {});
               }
           } catch (_) {}
       }
@@ -1763,14 +1803,22 @@ export const MockService = {
       const dbPayload: any = { ...data };
       delete dbPayload.integrator_id;
       delete dbPayload.integrator_name;
+      delete dbPayload.singlePlanPrice;
+      delete dbPayload.hasCameraRental;
+      delete dbPayload.cameraRentalDetails;
+      delete dbPayload.recordingDays;
+      delete dbPayload.billingAuthorizationService;
+      delete dbPayload.additionalNeighborhoodIds;
 
       try {
           const { error } = await supabase.from('profiles').update(dbPayload).eq('id', safeId);
           if (error) {
-              console.warn("[adminUpdateUser] Falha ao atualizar Supabase, tentando sem os campos de duplo bairro:", error);
+              console.warn("[adminUpdateUser] Falha ao atualizar Supabase, tentando sem os campos estendidos:", error);
               const fallbackData = { ...dbPayload };
               delete fallbackData.primary_neighborhood_id;
               delete fallbackData.secondary_neighborhood_id;
+              delete fallbackData.additional_neighborhood_ids;
+              delete fallbackData.billing_authorization_service;
               const { error: fallbackError } = await supabase.from('profiles').update(fallbackData).eq('id', safeId);
               if (fallbackError) {
                   console.warn("[adminUpdateUser] Aviso secundário no update do Supabase:", fallbackError);

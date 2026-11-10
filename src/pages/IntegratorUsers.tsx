@@ -145,12 +145,6 @@ const IntegratorUsers: React.FC = () => {
   const [modalIntegratorSearch, setModalIntegratorSearch] = useState('');
   const [savingUser, setSavingUser] = useState(false);
 
-  // Individual client plan configuration (Edit Modal)
-  const [editSinglePlanPrice, setEditSinglePlanPrice] = useState('49,90');
-  const [editHasCameraRental, setEditHasCameraRental] = useState(false);
-  const [editCameraRentalDetails, setEditCameraRentalDetails] = useState('');
-  const [editRecordingDays, setEditRecordingDays] = useState<number>(7);
-
   // Create Client Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -172,6 +166,14 @@ const IntegratorUsers: React.FC = () => {
   const [newHasCameraRental, setNewHasCameraRental] = useState(false);
   const [newCameraRentalDetails, setNewCameraRentalDetails] = useState('');
   const [newRecordingDays, setNewRecordingDays] = useState<number>(7);
+  const [newBillingAuth, setNewBillingAuth] = useState('');
+
+  // Individual client plan configuration (Edit Modal)
+  const [editSinglePlanPrice, setEditSinglePlanPrice] = useState('49,90');
+  const [editHasCameraRental, setEditHasCameraRental] = useState(false);
+  const [editCameraRentalDetails, setEditCameraRentalDetails] = useState('');
+  const [editRecordingDays, setEditRecordingDays] = useState<number>(7);
+  const [editBillingAuth, setEditBillingAuth] = useState('');
 
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [integratorToDelete, setIntegratorToDelete] = useState<User | null>(null);
@@ -442,12 +444,12 @@ const IntegratorUsers: React.FC = () => {
           setNewHoodId(adminFilterHood || neighborhoods[0]?.id || '');
       }
       setNewAdditionalHoods([]);
-
       // Initialize with integrator's default plan settings
       let defaultPrice = user?.singlePlanPrice ? String(user.singlePlanPrice) : '49,90';
       let defaultRental = user?.hasCameraRental !== undefined ? Boolean(user.hasCameraRental) : false;
       let defaultDetails = user?.cameraRentalDetails || '';
       let defaultDays = user?.recordingDays !== undefined ? Number(user.recordingDays) : 7;
+      let defaultBilling = user?.billingAuthorizationService || (user as any)?.billing_authorization_service || '';
 
       if (user?.id) {
           try {
@@ -458,6 +460,9 @@ const IntegratorUsers: React.FC = () => {
                   if (p.hasCameraRental !== undefined) defaultRental = Boolean(p.hasCameraRental);
                   if (p.cameraRentalDetails !== undefined) defaultDetails = p.cameraRentalDetails;
                   if (p.recordingDays !== undefined) defaultDays = Number(p.recordingDays);
+                  if (p.billingAuthorizationService || p.billing_authorization_service) {
+                      defaultBilling = p.billingAuthorizationService || p.billing_authorization_service;
+                  }
               }
           } catch (_) {}
       }
@@ -466,6 +471,7 @@ const IntegratorUsers: React.FC = () => {
       setNewHasCameraRental(defaultRental);
       setNewCameraRentalDetails(defaultDetails);
       setNewRecordingDays(defaultDays);
+      setNewBillingAuth(defaultBilling);
 
       setIsCreateModalOpen(true);
   };
@@ -504,7 +510,9 @@ const IntegratorUsers: React.FC = () => {
               singlePlanPrice: newSinglePlanPrice.trim() || '49,90',
               hasCameraRental: Boolean(newHasCameraRental),
               cameraRentalDetails: newCameraRentalDetails.trim(),
-              recordingDays: Number(newRecordingDays)
+              recordingDays: Number(newRecordingDays),
+              billingAuthorizationService: newBillingAuth.trim(),
+              billing_authorization_service: newBillingAuth.trim()
           });
 
           setIsCreateModalOpen(false);
@@ -658,7 +666,9 @@ const IntegratorUsers: React.FC = () => {
               singlePlanPrice: editSinglePlanPrice,
               hasCameraRental: editHasCameraRental,
               cameraRentalDetails: editCameraRentalDetails,
-              recordingDays: editRecordingDays
+              recordingDays: editRecordingDays,
+              billingAuthorizationService: editBillingAuth.trim(),
+              billing_authorization_service: editBillingAuth.trim()
           });
 
           if (user?.role === UserRole.ADMIN && editRole === UserRole.INTEGRATOR && editHoodId) {
@@ -1340,7 +1350,26 @@ const IntegratorUsers: React.FC = () => {
                                             setEditSinglePlanPrice(resident.singlePlanPrice ? String(resident.singlePlanPrice) : '49,90');
                                             setEditHasCameraRental(Boolean(resident.hasCameraRental));
                                             setEditCameraRentalDetails(resident.cameraRentalDetails || '');
-                                            setEditRecordingDays(Number(resident.recordingDays || 7));
+                                            const billingService = resident.billingAuthorizationService || (resident as any).billing_authorization_service || (() => {
+                                                try {
+                                                    const local = localStorage.getItem(`atalaia_local_profile_${resident.id}`);
+                                                    if (local) {
+                                                        const parsed = JSON.parse(local);
+                                                        if (parsed.billingAuthorizationService || parsed.billing_authorization_service) {
+                                                            return parsed.billingAuthorizationService || parsed.billing_authorization_service;
+                                                        }
+                                                    }
+                                                    const reg = localStorage.getItem('atalaia_custom_clients_registry');
+                                                    if (reg) {
+                                                        const parsedReg = JSON.parse(reg);
+                                                        if (parsedReg[resident.id]?.billingAuthorizationService || parsedReg[resident.id]?.billing_authorization_service) {
+                                                            return parsedReg[resident.id].billingAuthorizationService || parsedReg[resident.id].billing_authorization_service;
+                                                        }
+                                                    }
+                                                } catch (_) {}
+                                                return '';
+                                            })() || '';
+                                            setEditBillingAuth(billingService);
                                             setModalIntegratorSearch('');
                                             setIsEditModalOpen(true); 
                                         }
@@ -1540,6 +1569,21 @@ const IntegratorUsers: React.FC = () => {
                              <label className="text-xs text-zinc-300">Locação de Câmeras Inclusa</label>
                         </div>
                         {newHasCameraRental && <Input label="Detalhes da Locação" value={newCameraRentalDetails} onChange={e => setNewCameraRentalDetails(e.target.value)} />}
+
+                        {/* ADENDO CONTRATUAL - AUTORIZAÇÃO DE COBRANÇA */}
+                        <div className="pt-3 border-t border-white/10 space-y-1.5">
+                            <label className="text-[11px] font-bold text-blue-300 uppercase tracking-wide block">
+                                Adendo Contratual: Autorização de Cobrança Conjunta
+                            </label>
+                            <p className="text-[10px] text-zinc-400 leading-snug">
+                                Adendo no contrato: O cliente autoriza a cobrança dos serviços prestados neste contrato juntamente com o serviço:
+                            </p>
+                            <Input 
+                                placeholder="Ex: Manutenção mensal do sistema de CFTV / Internet fibra" 
+                                value={newBillingAuth} 
+                                onChange={e => setNewBillingAuth(e.target.value)} 
+                            />
+                        </div>
                     </div>
 
                     <Button type="submit" disabled={creatingUser} className="w-full h-12 mt-4 font-bold uppercase tracking-widest">
@@ -1983,6 +2027,21 @@ const IntegratorUsers: React.FC = () => {
                              <label className="text-xs text-zinc-300">Locação de Câmeras Inclusa</label>
                         </div>
                         {editHasCameraRental && <Input label="Detalhes da Locação" value={editCameraRentalDetails} onChange={e => setEditCameraRentalDetails(e.target.value)} />}
+
+                        {/* ADENDO CONTRATUAL - AUTORIZAÇÃO DE COBRANÇA */}
+                        <div className="pt-3 border-t border-white/10 space-y-1.5">
+                            <label className="text-[11px] font-bold text-blue-300 uppercase tracking-wide block">
+                                Adendo Contratual: Autorização de Cobrança Conjunta
+                            </label>
+                            <p className="text-[10px] text-zinc-400 leading-snug">
+                                Adendo no contrato: O cliente autoriza a cobrança dos serviços prestados neste contrato juntamente com o serviço:
+                            </p>
+                            <Input 
+                                placeholder="Ex: Manutenção mensal do sistema de CFTV / Internet fibra" 
+                                value={editBillingAuth} 
+                                onChange={e => setEditBillingAuth(e.target.value)} 
+                            />
+                        </div>
 
                         <div className="flex items-center justify-between p-3 bg-white/[0.03] rounded-xl border border-white/5">
                             <div>

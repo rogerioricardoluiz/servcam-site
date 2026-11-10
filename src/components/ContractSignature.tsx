@@ -820,7 +820,13 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
 
       <div class="section-title">5. CONDIÇÕES DE PAGAMENTO</div>
       <p>A contratação é regida por cobrança mensal recorrente no valor de <strong>R$ ${planPriceFormatted} / mês</strong>, com vencimento conforme data de adesão. O pagamento poderá ser efetuado via PIX, boleto bancário ou cartão de crédito. Em caso de inadimplência, poderá ocorrer suspensão temporária do acesso até a devida regularização.</p>
-      ${billingAuthDesc ? `<p style="margin-top: 10px; padding: 12px; background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 6px; font-size: 12px; color: #1e3a8a; line-height: 1.5;"><strong>5.1 AUTORIZAÇÃO DE COBRANÇA CONJUNTA:</strong> O CONTRATANTE autoriza expressamente a cobrança dos serviços prestados neste contrato juntamente com o serviço de: <strong>"${billingAuthDesc}"</strong>, conforme condições e valores acordados entre as partes.</p>` : ''}
+      <p style="margin-top: 10px; padding: 12px; background-color: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 6px; font-size: 12px; color: #1e3a8a; line-height: 1.5;">
+        <strong>5.1 AUTORIZAÇÃO DE COBRANÇA CONJUNTA:</strong> 
+        ${billingAuthDesc 
+          ? `O CONTRATANTE autoriza expressamente a cobrança dos serviços prestados neste contrato juntamente com o serviço de: <strong>"${billingAuthDesc}"</strong>, conforme condições e valores acordados entre as partes.` 
+          : `O CONTRATANTE autoriza expressamente a cobrança dos serviços prestados neste contrato juntamente com os demais serviços contratados junto à CONTRATADA (OPERADOR LOCAL), conforme condições e valores acordados.`
+        }
+      </p>
 
       <div class="section-title">6. ADESÃO E ACEITE DIGITAL</div>
       <p>A adesão ocorre mediante cadastro e aceite eletrônico com registro de data, hora e dados de auditoria digital (IP: ${signatureRecord.ipAddress}, OS: ${signatureRecord.os}, Navegador: ${signatureRecord.browser}). Este aceite possui validade jurídica plena nos termos da Lei Federal nº 14.063/2020 e da MP nº 2.200-2/2001.</p>
@@ -1187,12 +1193,18 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
               <div>
                 <h5 className="font-extrabold text-atalaia-neon text-sm uppercase mb-1">5. CONDIÇÕES DE PAGAMENTO</h5>
                 <p>A contratação é regida por cobrança mensal recorrente no valor estipulado de R$ {planPriceFormatted} / mês. O pagamento poderá ser efetuado via PIX, boleto bancário ou cartão de crédito. Em caso de inadimplência, poderá ocorrer suspensão temporária do acesso até a devida regularização.</p>
-                {billingAuthDesc && (
-                  <div className="mt-2 p-3 rounded-xl border bg-blue-950/20 border-blue-500/30 text-blue-200 text-[11px] leading-relaxed">
-                    <strong>Autorização de Cobrança Conjunta: </strong>
-                    O CONTRATANTE autoriza expressamente a cobrança dos serviços prestados neste contrato, juntamente com o serviço de: <strong>"{billingAuthDesc}"</strong>, conforme os valores e condições acordados.
-                  </div>
-                )}
+                <div className="mt-2 p-3 rounded-xl border bg-blue-950/20 border-blue-500/30 text-blue-200 text-[11px] leading-relaxed">
+                  <strong className="text-white block mb-0.5">5.1 Autorização de Cobrança Conjunta:</strong>
+                  {billingAuthDesc ? (
+                    <span>
+                      O CONTRATANTE autoriza expressamente a cobrança dos serviços prestados neste contrato, juntamente com o serviço de: <strong className="text-white underline">"{billingAuthDesc}"</strong>, conforme os valores e condições acordados.
+                    </span>
+                  ) : (
+                    <span className="text-zinc-300">
+                      O CONTRATANTE autoriza expressamente a cobrança dos serviços prestados neste contrato juntamente com os demais serviços contratados junto à operadora/integrador local credenciado, conforme condições acordadas.
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -1357,12 +1369,18 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
               <h4 className="font-bold text-white border-l-2 border-atalaia-neon pl-2 mb-2 text-xs">5. CONDIÇÕES DE PAGAMENTO</h4>
               <p className="mb-2">A contratação possui cobrança mensal recorrente automática no valor estipulado de <strong>R$ {planPriceFormatted} / mês</strong>, com vencimento fixado na data de adesão do usuário. O pagamento poderá ser efetuado via PIX, boleto ou cartão de crédito. Em caso de inadimplência superior a 5 (cinco) dias, poderá ocorrer suspensão temporária do acesso até a regularização cadastral.</p>
               
-              {billingAuthDesc && (
-                  <div className="p-3 rounded-xl border bg-blue-950/20 border-blue-500/30 text-blue-200 text-[11px] leading-relaxed">
-                    <strong>Autorização de Cobrança Conjunta: </strong>
-                    O CONTRATANTE autoriza expressamente a cobrança dos serviços prestados neste contrato, juntamente com o serviço de: <strong>"{billingAuthDesc}"</strong>, conforme os valores e condições acordados.
-                  </div>
-              )}
+              <div className="p-3 rounded-xl border bg-blue-950/20 border-blue-500/30 text-blue-200 text-[11px] leading-relaxed">
+                <strong className="text-white block mb-0.5">5.1 Autorização de Cobrança Conjunta:</strong>
+                {billingAuthDesc ? (
+                  <span>
+                    O CONTRATANTE autoriza expressamente a cobrança dos serviços prestados neste contrato, juntamente com o serviço de: <strong className="text-white underline">"{billingAuthDesc}"</strong>, conforme os valores e condições acordados.
+                  </span>
+                ) : (
+                  <span className="text-zinc-300">
+                    O CONTRATANTE autoriza expressamente a cobrança dos serviços prestados neste contrato juntamente com os demais serviços contratados junto à operadora/integrador local credenciado, conforme condições acordadas.
+                  </span>
+                )}
+              </div>
             </div>
 
             <div>

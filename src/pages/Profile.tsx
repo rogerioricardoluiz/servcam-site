@@ -199,6 +199,7 @@ const Profile: React.FC = () => {
   const [cameraRentalDetails, setCameraRentalDetails] = useState('');
   const [recordingDays, setRecordingDays] = useState<number>(7);
   const [customClause, setCustomClause] = useState('');
+  const [billingAuthorizationService, setBillingAuthorizationService] = useState('');
 
   const isIntegrator = 
     user?.role === UserRole.INTEGRATOR || 
@@ -311,6 +312,7 @@ const Profile: React.FC = () => {
       let initDetails = user.cameraRentalDetails || '';
       let initRecordingDays = user.recordingDays !== undefined ? Number(user.recordingDays) : 7;
       let initCustomClause = user.customClause || '';
+      let initBillingAuth = user.billingAuthorizationService || (user as any).billing_authorization_service || '';
 
       if (user.id && typeof window !== 'undefined') {
         try {
@@ -322,6 +324,9 @@ const Profile: React.FC = () => {
             if (!initDetails && p.cameraRentalDetails) initDetails = p.cameraRentalDetails;
             if (user.recordingDays === undefined && p.recordingDays !== undefined) initRecordingDays = Number(p.recordingDays);
             if (!initCustomClause && p.customClause !== undefined) initCustomClause = p.customClause;
+            if (!initBillingAuth && (p.billingAuthorizationService || p.billing_authorization_service)) {
+              initBillingAuth = p.billingAuthorizationService || p.billing_authorization_service;
+            }
           }
         } catch (_) {}
       }
@@ -331,6 +336,7 @@ const Profile: React.FC = () => {
       setCameraRentalDetails(initDetails || 'Locação de 1 câmera Full HD com suporte e manutenção inclusa');
       setRecordingDays(initRecordingDays);
       setCustomClause(initCustomClause || '');
+      setBillingAuthorizationService(initBillingAuth || '');
     }
   }, [user, savingBranding]);
 
@@ -390,7 +396,9 @@ const Profile: React.FC = () => {
               hasCameraRental: Boolean(hasCameraRental),
               cameraRentalDetails: cameraRentalDetails.trim(),
               recordingDays: Number(recordingDays),
-              customClause: customClause.trim()
+              customClause: customClause.trim(),
+              billingAuthorizationService: billingAuthorizationService.trim(),
+              billing_authorization_service: billingAuthorizationService.trim()
           } as any);
 
           if (user?.id) {
@@ -400,7 +408,9 @@ const Profile: React.FC = () => {
                     hasCameraRental: Boolean(hasCameraRental),
                     cameraRentalDetails: cameraRentalDetails.trim(),
                     recordingDays: Number(recordingDays),
-                    customClause: customClause.trim()
+                    customClause: customClause.trim(),
+                    billingAuthorizationService: billingAuthorizationService.trim(),
+                    billing_authorization_service: billingAuthorizationService.trim()
                   }));
                   window.dispatchEvent(new CustomEvent('atalaia:plan_config_changed'));
               } catch (_) {}
@@ -430,7 +440,9 @@ const Profile: React.FC = () => {
                       hasCameraRental: Boolean(hasCameraRental),
                       cameraRentalDetails: cameraRentalDetails.trim(),
                       recordingDays: Number(recordingDays),
-                      customClause: customClause.trim()
+                      customClause: customClause.trim(),
+                      billingAuthorizationService: billingAuthorizationService.trim(),
+                      billing_authorization_service: billingAuthorizationService.trim()
                   };
                   localStorage.setItem(`atalaia_integrator_plan_${user.id}`, JSON.stringify(planData));
                   localStorage.setItem('atalaia_integrator_plan_default', JSON.stringify(planData));
@@ -1416,6 +1428,27 @@ const Profile: React.FC = () => {
                                         value={customClause}
                                         onChange={e => setCustomClause(e.target.value)}
                                         className="w-full bg-zinc-950 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-zinc-600 focus:border-atalaia-neon outline-none font-sans leading-relaxed resize-y"
+                                    />
+                                </div>
+
+                                {/* DEFAULT BILLING AUTHORIZATION CLAUSE FOR INTEGRATOR */}
+                                <div className="p-4 bg-black/60 border border-blue-500/20 rounded-xl space-y-3 mt-4">
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                        <label className="text-xs font-extrabold text-blue-300 uppercase tracking-wider flex items-center gap-2">
+                                            <FileText size={16} className="text-blue-400" />
+                                            Adendo Contratual Padrão: Autorização de Cobrança Conjunta (Cláusula 5.1)
+                                        </label>
+                                        <span className="text-[10px] bg-blue-500/15 text-blue-300 px-2.5 py-0.5 rounded font-black uppercase">
+                                            Cláusula 5.1 no Contrato
+                                        </span>
+                                    </div>
+                                    <p className="text-[11px] text-zinc-400 leading-relaxed">
+                                        Defina o serviço padrão que sua empresa cobra em conjunto com o ServCam (ex: <code>Manutenção de CFTV</code> ou <code>Internet Fibra</code>). Este texto será aplicado na <strong>Cláusula 5.1</strong> de todos os contratos e herdado automaticamente ao cadastrar novos clientes.
+                                    </p>
+                                    <Input 
+                                        placeholder="Ex: Manutenção mensal do sistema de CFTV / Internet fibra óptica"
+                                        value={billingAuthorizationService}
+                                        onChange={e => setBillingAuthorizationService(e.target.value)}
                                     />
                                 </div>
                             </div>

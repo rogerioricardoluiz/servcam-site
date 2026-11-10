@@ -1052,6 +1052,35 @@ const Dashboard: React.FC = () => {
 
   return (
     <Layout>
+      {/* MANDATORY CONTRACT SIGNATURE BLOCKING MODAL */}
+      {user?.role === UserRole.RESIDENT && !contractSigned && (
+          <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-lg flex items-center justify-center p-4 overflow-y-auto">
+              <div className="max-w-4xl w-full bg-zinc-950 border-2 border-yellow-500/50 rounded-3xl p-6 md:p-8 shadow-[0_0_80px_rgba(234,179,8,0.2)] space-y-6 my-auto">
+                  <div className="flex items-center gap-3 p-4 bg-yellow-500/15 border border-yellow-500/30 rounded-2xl">
+                      <div className="p-3 bg-yellow-500/25 text-yellow-500 rounded-xl shrink-0">
+                          <AlertTriangle size={32} />
+                      </div>
+                      <div>
+                          <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-wider">Acesso Bloqueado: Assinatura de Contrato Obrigatória</h2>
+                          <p className="text-xs md:text-sm text-zinc-300 mt-1">
+                              Para começar a operar o painel ServCam e acessar as câmeras, pânico e monitoramento, você deve ler e assinar eletronicamente o <strong>Contrato de Prestação de Serviços</strong> abaixo. O sistema só iniciará a operação após a assinatura.
+                          </p>
+                      </div>
+                  </div>
+
+                  <div className="bg-black/80 border border-white/10 rounded-2xl p-4 max-h-[65vh] overflow-y-auto">
+                      <ContractSignature 
+                          user={user} 
+                          onSignComplete={() => {
+                              setContractSigned(true);
+                              setFeedback({ msg: 'Contrato assinado com sucesso! Painel liberado para operação.', type: 'success' });
+                          }} 
+                      />
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* POPUP FEEDBACK TOAST */}
       {feedback && (
             <div className={`
