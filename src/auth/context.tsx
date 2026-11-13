@@ -218,6 +218,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let singlePlanPrice = undefined;
       let hasCameraRental = undefined;
       let cameraRentalDetails = undefined;
+      let streetAddress = undefined;
+      let cep = undefined;
+      let parsedCity = undefined;
+      let parsedState = undefined;
       
       if (profile.address && profile.address.trim().startsWith('{')) {
           try {
@@ -235,7 +239,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               singlePlanPrice = parsed.singlePlanPrice;
               hasCameraRental = parsed.hasCameraRental;
               cameraRentalDetails = parsed.cameraRentalDetails;
+              streetAddress = parsed.streetAddress || parsed.endereco || undefined;
+              cep = parsed.cep || undefined;
+              parsedCity = parsed.city || undefined;
+              parsedState = parsed.state || undefined;
           } catch (e) {}
+      } else if (profile.address) {
+          streetAddress = profile.address;
       }
 
       return {
@@ -248,8 +258,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           primaryNeighborhoodId: profile.primary_neighborhood_id || profile.neighborhood_id,
           secondaryNeighborhoodId: profile.secondary_neighborhood_id,
           address: profile.address,
-          city: profile.city,
-          state: profile.state,
+          streetAddress: profile.streetAddress || streetAddress,
+          cep: profile.cep || cep,
+          city: profile.city || parsedCity,
+          state: profile.state || parsedState,
           phone: profile.phone || parsedPhone,
           photoUrl: profile.photo_url,
           lat: profile.lat,
@@ -324,6 +336,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           let singlePlanPrice = finalUser.singlePlanPrice;
           let hasCameraRental = finalUser.hasCameraRental;
           let cameraRentalDetails = finalUser.cameraRentalDetails;
+          let streetAddress = finalUser.streetAddress;
+          let cep = finalUser.cep;
+          let city = finalUser.city;
+          let state = finalUser.state;
 
           if (finalUser.address && finalUser.address.trim().startsWith('{')) {
               try {
@@ -340,7 +356,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   if (parsed.singlePlanPrice !== undefined) singlePlanPrice = parsed.singlePlanPrice;
                   if (parsed.hasCameraRental !== undefined) hasCameraRental = parsed.hasCameraRental;
                   if (parsed.cameraRentalDetails !== undefined) cameraRentalDetails = parsed.cameraRentalDetails;
+                  if (parsed.streetAddress !== undefined) streetAddress = parsed.streetAddress;
+                  if (parsed.cep !== undefined) cep = parsed.cep;
+                  if (parsed.city !== undefined && !city) city = parsed.city;
+                  if (parsed.state !== undefined && !state) state = parsed.state;
               } catch (e) {}
+          } else if (finalUser.address && !streetAddress) {
+              streetAddress = finalUser.address;
           }
 
           setUser({
@@ -356,7 +378,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               customRgb,
               singlePlanPrice,
               hasCameraRental,
-              cameraRentalDetails
+              cameraRentalDetails,
+              streetAddress,
+              cep,
+              city,
+              state
           });
           setLoading(false);
           return;
@@ -1032,10 +1058,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     const updatedUser = { ...user, ...data };
+    if (data.address && typeof data.address === 'string' && data.address.trim().startsWith('{')) {
+        try {
+            const parsed = JSON.parse(data.address);
+            if (parsed.streetAddress !== undefined) updatedUser.streetAddress = parsed.streetAddress;
+            if (parsed.cep !== undefined) updatedUser.cep = parsed.cep;
+            if (parsed.city !== undefined) updatedUser.city = parsed.city;
+            if (parsed.state !== undefined) updatedUser.state = parsed.state;
+        } catch (_) {}
+    } else if (data.address && typeof data.address === 'string' && !('streetAddress' in data)) {
+        updatedUser.streetAddress = data.address;
+    }
     
     // Persist in localStorage so changes (including clearing brandName or brandLogo) are retained on refresh
     try {
         localStorage.setItem(`atalaia_local_profile_${user.id}`, JSON.stringify(updatedUser));
+        const rawReg = localStorage.getItem('atalaia_custom_clients_registry');
+        const regMap: Record<string, any> = rawReg ? JSON.parse(rawReg) : {};
+        if (regMap[user.id] || updatedUser.role === UserRole.INTEGRATOR) {
+            regMap[user.id] = { ...(regMap[user.id] || {}), ...updatedUser };
+            localStorage.setItem('atalaia_custom_clients_registry', JSON.stringify(regMap));
+            if (isRealSupabase) {
+                supabase.from('system_settings').upsert({
+                    key: 'custom_clients_registry',
+                    value: JSON.stringify(regMap),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'key' }).then(() => {}, () => {});
+            }
+        }
     } catch (e) {
         console.error("[Auth] Error caching profile updates:", e);
     }

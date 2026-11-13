@@ -36,6 +36,10 @@ const IntegratorUsers: React.FC = () => {
   const [integratorPassword, setIntegratorPassword] = useState('123456');
   const [integratorCnpj, setIntegratorCnpj] = useState('');
   const [integratorRazaoSocial, setIntegratorRazaoSocial] = useState('');
+  const [integratorCep, setIntegratorCep] = useState('');
+  const [integratorAddress, setIntegratorAddress] = useState('');
+  const [integratorCity, setIntegratorCity] = useState('');
+  const [integratorState, setIntegratorState] = useState('');
 
   // Editing integrator modal states
   const [editingIntegrator, setEditingIntegrator] = useState<User | null>(null);
@@ -44,9 +48,39 @@ const IntegratorUsers: React.FC = () => {
   const [editIntPhone, setEditIntPhone] = useState('');
   const [editIntCnpj, setEditIntCnpj] = useState('');
   const [editIntRazaoSocial, setEditIntRazaoSocial] = useState('');
+  const [editIntCep, setEditIntCep] = useState('');
+  const [editIntAddress, setEditIntAddress] = useState('');
+  const [editIntCity, setEditIntCity] = useState('');
+  const [editIntState, setEditIntState] = useState('');
   const [editIntLogo, setEditIntLogo] = useState('');
   const [editIntPassword, setEditIntPassword] = useState('');
   const [savingIntegratorEdit, setSavingIntegratorEdit] = useState(false);
+
+  const formatCepMask = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 8);
+    return digits.length > 5 ? `${digits.slice(0, 5)}-${digits.slice(5)}` : digits;
+  };
+
+  const handleLookupCep = async (cepVal: string, mode: 'create' | 'edit') => {
+    const digits = cepVal.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.erro) return;
+      const streetLine = [data.logradouro, data.bairro].filter(Boolean).join(', ');
+      if (mode === 'create') {
+        if (!integratorAddress.trim() && streetLine) setIntegratorAddress(streetLine);
+        if (!integratorCity.trim() && data.localidade) setIntegratorCity(data.localidade);
+        if (!integratorState.trim() && data.uf) setIntegratorState(data.uf.toUpperCase());
+      } else {
+        if (!editIntAddress.trim() && streetLine) setEditIntAddress(streetLine);
+        if (!editIntCity.trim() && data.localidade) setEditIntCity(data.localidade);
+        if (!editIntState.trim() && data.uf) setEditIntState(data.uf.toUpperCase());
+      }
+    } catch (_) {}
+  };
 
   // Code generator modal states
   const [selectedIntegratorForCode, setSelectedIntegratorForCode] = useState<User | null>(null);
@@ -533,18 +567,31 @@ const IntegratorUsers: React.FC = () => {
         setCreatingUser(true);
         try {
             const cleanPhone = integratorPhone.trim();
+            const cleanAddress = integratorAddress.trim();
+            const cleanCep = integratorCep.trim();
+            const cleanCity = integratorCity.trim();
+            const cleanState = integratorState.trim().toUpperCase();
+
             const created = await MockService.createClientUser({
                 name: integratorName.trim(),
                 email: integratorEmail.trim(),
                 password: integratorPassword,
                 phone: cleanPhone || undefined,
+                city: cleanCity || undefined,
+                state: cleanState || undefined,
+                cep: cleanCep || undefined,
+                streetAddress: cleanAddress || undefined,
                 role: UserRole.INTEGRATOR,
                 approved: true,
                 address: JSON.stringify({
                     companyName: integratorName.trim(),
                     cnpj: integratorCnpj.trim(),
                     razaoSocial: integratorRazaoSocial.trim(),
-                    phone: cleanPhone
+                    phone: cleanPhone,
+                    streetAddress: cleanAddress,
+                    cep: cleanCep,
+                    city: cleanCity,
+                    state: cleanState
                 })
             });
 
@@ -558,6 +605,10 @@ const IntegratorUsers: React.FC = () => {
             setIntegratorPhone('');
             setIntegratorCnpj('');
             setIntegratorRazaoSocial('');
+            setIntegratorCep('');
+            setIntegratorAddress('');
+            setIntegratorCity('');
+            setIntegratorState('');
             await fetchData();
             setSelectedIntegratorForCode(created);
             showFeedback(`Empresa "${created.name}" incluída com sucesso! ID, link e WhatsApp configurados.`, 'success');
@@ -569,13 +620,26 @@ const IntegratorUsers: React.FC = () => {
     };
 
     const handleOpenEditIntegrator = (intUser: User) => {
+        let parsedAddr: any = {};
+        if (intUser.address && typeof intUser.address === 'string' && intUser.address.trim().startsWith('{')) {
+            try { parsedAddr = JSON.parse(intUser.address); } catch (_) {}
+        }
+        const resolvedStreet = intUser.streetAddress || parsedAddr.streetAddress || parsedAddr.endereco || (intUser.address && !intUser.address.trim().startsWith('{') ? intUser.address : '') || '';
+        const resolvedCep = intUser.cep || parsedAddr.cep || '';
+        const resolvedCity = intUser.city || parsedAddr.city || '';
+        const resolvedState = intUser.state || parsedAddr.state || '';
+
         setEditingIntegrator(intUser);
         setEditIntName(intUser.companyName || intUser.razaoSocial || intUser.name || '');
         setEditIntEmail(intUser.email || '');
-        setEditIntPhone(intUser.phone || '');
-        setEditIntCnpj(intUser.cnpj || '');
-        setEditIntRazaoSocial(intUser.razaoSocial || '');
-        setEditIntLogo(intUser.companyLogo || '');
+        setEditIntPhone(intUser.phone || parsedAddr.phone || '');
+        setEditIntCnpj(intUser.cnpj || parsedAddr.cnpj || '');
+        setEditIntRazaoSocial(intUser.razaoSocial || parsedAddr.razaoSocial || '');
+        setEditIntCep(resolvedCep);
+        setEditIntAddress(resolvedStreet);
+        setEditIntCity(resolvedCity);
+        setEditIntState(resolvedState);
+        setEditIntLogo(intUser.companyLogo || parsedAddr.companyLogo || '');
         setEditIntPassword('');
     };
 
@@ -590,16 +654,41 @@ const IntegratorUsers: React.FC = () => {
         try {
             const intId = editingIntegrator.id;
             const cleanPhone = editIntPhone.trim();
+            const cleanAddress = editIntAddress.trim();
+            const cleanCep = editIntCep.trim();
+            const cleanCity = editIntCity.trim();
+            const cleanState = editIntState.trim().toUpperCase();
+
+            let existingJson: any = {};
+            if (editingIntegrator.address && typeof editingIntegrator.address === 'string' && editingIntegrator.address.trim().startsWith('{')) {
+                try { existingJson = JSON.parse(editingIntegrator.address); } catch (_) {}
+            }
+
+            const serializedAddress = JSON.stringify({
+                ...existingJson,
+                companyName: editIntName.trim(),
+                razaoSocial: editIntRazaoSocial.trim(),
+                cnpj: editIntCnpj.trim(),
+                phone: cleanPhone,
+                companyLogo: editIntLogo.trim(),
+                streetAddress: cleanAddress,
+                cep: cleanCep,
+                city: cleanCity,
+                state: cleanState
+            });
+
             const payload: any = {
                 name: editIntName.trim(),
                 phone: cleanPhone,
-                address: JSON.stringify({
-                    companyName: editIntName.trim(),
-                    razaoSocial: editIntRazaoSocial.trim(),
-                    cnpj: editIntCnpj.trim(),
-                    phone: cleanPhone,
-                    companyLogo: editIntLogo.trim()
-                })
+                city: cleanCity || null,
+                state: cleanState || null,
+                streetAddress: cleanAddress,
+                cep: cleanCep,
+                companyName: editIntName.trim(),
+                razaoSocial: editIntRazaoSocial.trim(),
+                cnpj: editIntCnpj.trim(),
+                companyLogo: editIntLogo.trim(),
+                address: serializedAddress
             };
             if (editIntEmail.trim()) payload.email = editIntEmail.trim();
             if (editIntPassword.trim().length >= 6) payload.password = editIntPassword.trim();
@@ -616,6 +705,11 @@ const IntegratorUsers: React.FC = () => {
                         razaoSocial: editIntRazaoSocial.trim(),
                         cnpj: editIntCnpj.trim(),
                         phone: cleanPhone,
+                        address: serializedAddress,
+                        streetAddress: cleanAddress,
+                        cep: cleanCep,
+                        city: cleanCity,
+                        state: cleanState,
                         companyLogo: editIntLogo.trim() || item.companyLogo,
                         email: editIntEmail.trim() || item.email
                     };
@@ -623,6 +717,7 @@ const IntegratorUsers: React.FC = () => {
                 return item;
             }));
 
+            await fetchData();
             window.dispatchEvent(new CustomEvent('atalaia:integrator_updated', { detail: { id: intId, phone: cleanPhone } }));
             showFeedback(`Empresa integradora "${editIntName}" atualizada com sucesso!`, 'success');
             setEditingIntegrator(null);
@@ -985,6 +1080,18 @@ const IntegratorUsers: React.FC = () => {
                                                 >
                                                     + Cadastrar WhatsApp
                                                 </button>
+                                            </div>
+                                        )}
+                                        {(intUser.streetAddress || intUser.cep || intUser.city) && (
+                                            <div className="flex items-start gap-1.5 mt-1.5 text-[11px] text-zinc-400">
+                                                <MapPin size={12} className="text-atalaia-neon shrink-0 mt-0.5" />
+                                                <span className="line-clamp-2">
+                                                    {[
+                                                        intUser.streetAddress,
+                                                        [intUser.city, intUser.state].filter(Boolean).join('/'),
+                                                        intUser.cep ? `CEP ${intUser.cep}` : ''
+                                                    ].filter(Boolean).join(' • ')}
+                                                </span>
                                             </div>
                                         )}
                                     </div>
@@ -1594,7 +1701,7 @@ const IntegratorUsers: React.FC = () => {
         </Modal>
 
         <Modal isOpen={isCreateIntegratorModalOpen} onClose={() => setIsCreateIntegratorModalOpen(false)}>
-            <form onSubmit={handleCreateIntegrator} className="p-6 md:p-8 space-y-4">
+            <form onSubmit={handleCreateIntegrator} className="p-6 md:p-8 space-y-4 max-h-[85vh] overflow-y-auto">
                 <h2 className="text-xl font-bold text-white mb-4">Incluir Empresa Integradora</h2>
                 <Input label="Nome da Empresa / Nome Fantasia" value={integratorName} onChange={e => setIntegratorName(e.target.value)} required />
                 <Input label="E-mail de Acesso" type="email" value={integratorEmail} onChange={e => setIntegratorEmail(e.target.value)} required />
@@ -1605,8 +1712,41 @@ const IntegratorUsers: React.FC = () => {
                     </p>
                 </div>
                 <Input label="Senha Inicial" type="text" value={integratorPassword} onChange={e => setIntegratorPassword(e.target.value)} required />
-                <Input label="CNPJ" value={integratorCnpj} onChange={e => setIntegratorCnpj(e.target.value)} />
-                <Input label="Razão Social" value={integratorRazaoSocial} onChange={e => setIntegratorRazaoSocial(e.target.value)} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <Input label="CNPJ" value={integratorCnpj} onChange={e => setIntegratorCnpj(e.target.value)} />
+                    <Input label="Razão Social" value={integratorRazaoSocial} onChange={e => setIntegratorRazaoSocial(e.target.value)} />
+                </div>
+                <div className="pt-2 border-t border-white/10 space-y-3">
+                    <span className="text-[11px] font-bold text-atalaia-neon uppercase tracking-wider flex items-center gap-1.5">
+                        <MapPin size={13} /> Endereço da Empresa Integradora
+                    </span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <Input 
+                            label="CEP" 
+                            placeholder="00000-000" 
+                            value={integratorCep} 
+                            onChange={e => {
+                                const formatted = formatCepMask(e.target.value);
+                                setIntegratorCep(formatted);
+                                handleLookupCep(formatted, 'create');
+                            }} 
+                        />
+                        <div className="md:col-span-2">
+                            <Input 
+                                label="Endereço (Rua, Número, Sala/Bairro)" 
+                                placeholder="Ex: Av. Central, 100, Sala 02" 
+                                value={integratorAddress} 
+                                onChange={e => setIntegratorAddress(e.target.value)} 
+                            />
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="col-span-2">
+                            <Input label="Cidade" placeholder="Ex: São José" value={integratorCity} onChange={e => setIntegratorCity(e.target.value)} />
+                        </div>
+                        <Input label="Estado (UF)" placeholder="SC" maxLength={2} value={integratorState} onChange={e => setIntegratorState(e.target.value.toUpperCase())} />
+                    </div>
+                </div>
                 <Button type="submit" disabled={creatingUser} className="w-full">
                     {creatingUser ? 'Cadastrando...' : 'Incluir Empresa'}
                 </Button>
@@ -1616,7 +1756,7 @@ const IntegratorUsers: React.FC = () => {
         {/* MODAL: EDITAR EMPRESA INTEGRADORA */}
         <Modal isOpen={Boolean(editingIntegrator)} onClose={() => setEditingIntegrator(null)}>
             {editingIntegrator && (
-                <form onSubmit={handleSaveIntegratorEdit} className="p-6 md:p-8 space-y-4">
+                <form onSubmit={handleSaveIntegratorEdit} className="p-6 md:p-8 space-y-4 max-h-[85vh] overflow-y-auto">
                     <div className="flex items-center justify-between border-b border-white/10 pb-3">
                         <div className="flex items-center gap-2">
                             <Building className="text-atalaia-neon" size={20} />
@@ -1643,8 +1783,43 @@ const IntegratorUsers: React.FC = () => {
                     </div>
 
                     <Input label="E-mail de Acesso" type="email" value={editIntEmail} onChange={e => setEditIntEmail(e.target.value)} />
-                    <Input label="CNPJ" value={editIntCnpj} onChange={e => setEditIntCnpj(e.target.value)} />
-                    <Input label="Razão Social" value={editIntRazaoSocial} onChange={e => setEditIntRazaoSocial(e.target.value)} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <Input label="CNPJ" value={editIntCnpj} onChange={e => setEditIntCnpj(e.target.value)} />
+                        <Input label="Razão Social" value={editIntRazaoSocial} onChange={e => setEditIntRazaoSocial(e.target.value)} />
+                    </div>
+
+                    <div className="pt-2 border-t border-white/10 space-y-3">
+                        <span className="text-[11px] font-bold text-atalaia-neon uppercase tracking-wider flex items-center gap-1.5">
+                            <MapPin size={13} /> Endereço da Empresa Integradora
+                        </span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <Input 
+                                label="CEP" 
+                                placeholder="00000-000" 
+                                value={editIntCep} 
+                                onChange={e => {
+                                    const formatted = formatCepMask(e.target.value);
+                                    setEditIntCep(formatted);
+                                    handleLookupCep(formatted, 'edit');
+                                }} 
+                            />
+                            <div className="md:col-span-2">
+                                <Input 
+                                    label="Endereço (Rua, Número, Sala/Bairro)" 
+                                    placeholder="Ex: Av. Central, 100, Sala 02" 
+                                    value={editIntAddress} 
+                                    onChange={e => setEditIntAddress(e.target.value)} 
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="col-span-2">
+                                <Input label="Cidade" placeholder="Ex: São José" value={editIntCity} onChange={e => setEditIntCity(e.target.value)} />
+                            </div>
+                            <Input label="Estado (UF)" placeholder="SC" maxLength={2} value={editIntState} onChange={e => setEditIntState(e.target.value.toUpperCase())} />
+                        </div>
+                    </div>
+
                     <Input label="URL do Logotipo da Empresa" placeholder="https://..." value={editIntLogo} onChange={e => setEditIntLogo(e.target.value)} />
                     <Input label="Nova Senha (deixe em branco para manter atual)" type="text" placeholder="Mínimo 6 dígitos" value={editIntPassword} onChange={e => setEditIntPassword(e.target.value)} />
 

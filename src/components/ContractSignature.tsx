@@ -122,10 +122,30 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
           } catch (_) {}
         }
 
+        const formatIntegratorAddress = (u: any): string => {
+          let parsed: Record<string, any> = {};
+          if (u?.address && typeof u.address === 'string' && u.address.trim().startsWith('{')) {
+            try { parsed = JSON.parse(u.address); } catch (_) {}
+          }
+          const rawPlain = u?.address && typeof u.address === 'string' && !u.address.trim().startsWith('{') ? u.address.trim() : '';
+          const street = (u?.streetAddress || parsed.streetAddress || rawPlain || '').trim();
+          const city = (u?.city || parsed.city || '').trim();
+          const state = (u?.state || parsed.state || '').trim();
+          const cep = (u?.cep || parsed.cep || '').trim();
+          const parts: string[] = [];
+          if (street) parts.push(street);
+          if (city && state) parts.push(`${city} – ${state}`);
+          else if (city || state) parts.push(city || state);
+          if (cep) parts.push(`CEP: ${cep}`);
+          return parts.length > 0
+            ? parts.join(', ')
+            : 'Avenida Josué di Bernardi, nº 185, sala 27, Campinas, São José – SC';
+        };
+
         setIntegratorDetails({
           name: intName || 'Alien Monitoramento Eletrônico Ltda.',
           cnpj: user.cnpj || '51.482.661/0001-31',
-          address: user.address && !user.address.trim().startsWith('{') ? user.address : 'Avenida Josué di Bernardi, nº 185, sala 27, Campinas, São José – SC',
+          address: formatIntegratorAddress(user),
           singlePlanPrice: price,
           hasCameraRental: rental,
           cameraRentalDetails: details,
@@ -187,10 +207,30 @@ export const ContractSignature: React.FC<ContractSignatureProps> = ({ user, onSi
             }
 
             if (partnerName && !partnerName.toLowerCase().includes('alien')) {
+              const formatMatchedAddress = (u: any): string => {
+                let parsed: Record<string, any> = {};
+                if (u?.address && typeof u.address === 'string' && u.address.trim().startsWith('{')) {
+                  try { parsed = JSON.parse(u.address); } catch (_) {}
+                }
+                const rawPlain = u?.address && typeof u.address === 'string' && !u.address.trim().startsWith('{') ? u.address.trim() : '';
+                const street = (u?.streetAddress || parsed.streetAddress || rawPlain || '').trim();
+                const city = (u?.city || parsed.city || '').trim();
+                const state = (u?.state || parsed.state || '').trim();
+                const cep = (u?.cep || parsed.cep || '').trim();
+                const parts: string[] = [];
+                if (street) parts.push(street);
+                if (city && state) parts.push(`${city} – ${state}`);
+                else if (city || state) parts.push(city || state);
+                if (cep) parts.push(`CEP: ${cep}`);
+                return parts.length > 0
+                  ? parts.join(', ')
+                  : 'Avenida Josué di Bernardi, nº 185, sala 27, Campinas, São José – SC';
+              };
+
               setIntegratorDetails({
                 name: partnerName,
                 cnpj: matched.cnpj || '51.482.661/0001-31',
-                address: matched.address && !matched.address.trim().startsWith('{') ? matched.address : 'Avenida Josué di Bernardi, nº 185, sala 27, Campinas, São José – SC',
+                address: formatMatchedAddress(matched),
                 singlePlanPrice: price,
                 hasCameraRental: rental,
                 cameraRentalDetails: details,

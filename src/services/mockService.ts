@@ -222,6 +222,13 @@ export const MockService = {
       let cameraRentalDetails = u.cameraRentalDetails;
       let recordingDays = u.recordingDays;
       let customClause = u.customClause;
+      let streetAddress = u.streetAddress;
+      let cep = u.cep;
+      let city = u.city;
+      let state = u.state;
+      let banco = u.banco;
+      let pix = u.pix;
+      let cpf = u.cpf;
       if (u.address && typeof u.address === 'string' && u.address.trim().startsWith('{')) {
         try {
           const parsed = JSON.parse(u.address);
@@ -236,7 +243,16 @@ export const MockService = {
           if (parsed.cameraRentalDetails !== undefined) cameraRentalDetails = parsed.cameraRentalDetails;
           if (parsed.recordingDays !== undefined) recordingDays = parsed.recordingDays;
           if (parsed.customClause !== undefined) customClause = parsed.customClause;
+          if (!streetAddress && (parsed.streetAddress || parsed.endereco)) streetAddress = parsed.streetAddress || parsed.endereco;
+          if (!cep && parsed.cep) cep = parsed.cep;
+          if (!city && parsed.city) city = parsed.city;
+          if (!state && parsed.state) state = parsed.state;
+          if (!banco && parsed.banco) banco = parsed.banco;
+          if (!pix && parsed.pix) pix = parsed.pix;
+          if (!cpf && parsed.cpf) cpf = parsed.cpf;
         } catch (_) {}
+      } else if (u.address && typeof u.address === 'string' && !streetAddress) {
+        streetAddress = u.address;
       }
       if (typeof window !== 'undefined' && u.id) {
         if (!phone) {
@@ -284,7 +300,14 @@ export const MockService = {
         hasCameraRental,
         cameraRentalDetails,
         recordingDays,
-        customClause
+        customClause,
+        streetAddress,
+        cep,
+        city,
+        state,
+        banco,
+        pix,
+        cpf
       };
     };
 
@@ -1274,6 +1297,10 @@ export const MockService = {
     password?: string;
     phone?: string;
     address?: string;
+    streetAddress?: string;
+    cep?: string;
+    city?: string;
+    state?: string;
     plan?: UserPlan;
     role?: UserRole;
     neighborhoodId?: string;
@@ -1368,6 +1395,8 @@ export const MockService = {
           email: cleanEmail,
           phone: payload.phone || '',
           address: payload.address || '',
+          city: payload.city || undefined,
+          state: payload.state || undefined,
           role,
           plan,
           neighborhood_id: sanitizeUUID(payload.neighborhoodId),
@@ -1395,12 +1424,26 @@ export const MockService = {
       }
     }
 
+    let parsedJsonAddr: any = {};
+    if (payload.address && payload.address.trim().startsWith('{')) {
+      try {
+        parsedJsonAddr = JSON.parse(payload.address);
+      } catch (_) {}
+    }
+
     const createdUser: User & { password?: string } = {
       id: finalUserId,
       name: payload.name.trim(),
       email: cleanEmail,
       phone: payload.phone || '',
       address: payload.address || '',
+      streetAddress: payload.streetAddress || parsedJsonAddr.streetAddress || (!payload.address?.trim().startsWith('{') ? payload.address : undefined),
+      cep: payload.cep || parsedJsonAddr.cep || undefined,
+      city: payload.city || parsedJsonAddr.city || undefined,
+      state: payload.state || parsedJsonAddr.state || undefined,
+      companyName: parsedJsonAddr.companyName || undefined,
+      cnpj: parsedJsonAddr.cnpj || undefined,
+      razaoSocial: parsedJsonAddr.razaoSocial || undefined,
       role,
       plan,
       neighborhoodId: safeNeighborhoodId,
@@ -1609,6 +1652,11 @@ export const MockService = {
 
             const hoodId = p.neighborhood_id || localData.neighborhoodId;
             const intInfo = resolveIntegratorForUser(p.id, hoodId, localData);
+            const rawAddress = p.address || localData.address || '';
+            let parsedAddr: any = {};
+            if (typeof rawAddress === 'string' && rawAddress.trim().startsWith('{')) {
+                try { parsedAddr = JSON.parse(rawAddress); } catch {}
+            }
 
             resultMap.set(p.id, {
                 id: p.id,
@@ -1622,8 +1670,20 @@ export const MockService = {
                 additionalNeighborhoodIds: p.additional_neighborhood_ids || localData.additionalNeighborhoodIds || [],
                 integratorId: intInfo?.integratorId,
                 integratorName: intInfo?.integratorName,
-                phone: p.phone || localData.phone,
-                address: p.address || localData.address,
+                phone: p.phone || parsedAddr.phone || localData.phone,
+                address: rawAddress,
+                streetAddress: parsedAddr.streetAddress || parsedAddr.endereco || localData.streetAddress || (!String(rawAddress).trim().startsWith('{') ? rawAddress : undefined),
+                cep: parsedAddr.cep || localData.cep,
+                city: p.city || parsedAddr.city || localData.city,
+                state: p.state || parsedAddr.state || localData.state,
+                companyName: parsedAddr.companyName || localData.companyName,
+                companyLogo: parsedAddr.companyLogo || localData.companyLogo,
+                cnpj: parsedAddr.cnpj || localData.cnpj,
+                razaoSocial: parsedAddr.razaoSocial || localData.razaoSocial,
+                banco: parsedAddr.banco || localData.banco,
+                pix: parsedAddr.pix || localData.pix,
+                cpf: parsedAddr.cpf || localData.cpf,
+                customRgb: parsedAddr.customRgb || localData.customRgb,
                 approved: p.approved !== undefined ? p.approved === true : (localData.approved !== false),
                 lat: p.lat,
                 lng: p.lng,
@@ -1635,10 +1695,11 @@ export const MockService = {
                 canEdit: p.can_edit !== undefined ? p.can_edit : (localData.canEdit !== undefined ? localData.canEdit : false),
                 isTeam: localData.isTeam !== undefined ? localData.isTeam : (p.role !== UserRole.RESIDENT && p.role !== UserRole.INTEGRATOR),
                 teamRoleTitle: localData.teamRoleTitle,
-                singlePlanPrice: localData.singlePlanPrice,
-                hasCameraRental: localData.hasCameraRental,
-                cameraRentalDetails: localData.cameraRentalDetails,
-                recordingDays: localData.recordingDays,
+                singlePlanPrice: parsedAddr.singlePlanPrice !== undefined ? parsedAddr.singlePlanPrice : localData.singlePlanPrice,
+                hasCameraRental: parsedAddr.hasCameraRental !== undefined ? parsedAddr.hasCameraRental : localData.hasCameraRental,
+                cameraRentalDetails: parsedAddr.cameraRentalDetails !== undefined ? parsedAddr.cameraRentalDetails : localData.cameraRentalDetails,
+                recordingDays: parsedAddr.recordingDays !== undefined ? parsedAddr.recordingDays : localData.recordingDays,
+                customClause: parsedAddr.customClause !== undefined ? parsedAddr.customClause : localData.customClause,
                 billingAuthorizationService: p.billing_authorization_service || localData.billingAuthorizationService || localData.billing_authorization_service || ''
             });
         });
@@ -1655,6 +1716,10 @@ export const MockService = {
               if (c.billingAuthorizationService || c.billing_authorization_service) {
                 existingInMap.billingAuthorizationService = c.billingAuthorizationService || c.billing_authorization_service;
               }
+              if (!existingInMap.streetAddress && c.streetAddress) existingInMap.streetAddress = c.streetAddress;
+              if (!existingInMap.cep && c.cep) existingInMap.cep = c.cep;
+              if (!existingInMap.city && c.city) existingInMap.city = c.city;
+              if (!existingInMap.state && c.state) existingInMap.state = c.state;
               return;
             }
             // Avoid duplicating by email if already in resultMap
@@ -1669,12 +1734,20 @@ export const MockService = {
               if (c.billingAuthorizationService || c.billing_authorization_service) {
                 existingByEmail.billingAuthorizationService = c.billingAuthorizationService || c.billing_authorization_service;
               }
+              if (!existingByEmail.streetAddress && c.streetAddress) existingByEmail.streetAddress = c.streetAddress;
+              if (!existingByEmail.cep && c.cep) existingByEmail.cep = c.cep;
+              if (!existingByEmail.city && c.city) existingByEmail.city = c.city;
+              if (!existingByEmail.state && c.state) existingByEmail.state = c.state;
               return;
             }
             if (neighborhoodId && c.neighborhoodId !== neighborhoodId && c.secondaryNeighborhoodId !== neighborhoodId) {
               return;
             }
             const intInfo = resolveIntegratorForUser(c.id, c.neighborhoodId, c);
+            let parsedCAddr: any = {};
+            if (typeof c.address === 'string' && c.address.trim().startsWith('{')) {
+              try { parsedCAddr = JSON.parse(c.address); } catch {}
+            }
             resultMap.set(c.id, {
               id: c.id,
               name: c.name || 'Sem Nome',
@@ -1687,8 +1760,16 @@ export const MockService = {
               additionalNeighborhoodIds: c.additionalNeighborhoodIds || [],
               integratorId: intInfo?.integratorId || c.integratorId,
               integratorName: intInfo?.integratorName || c.integratorName,
-              phone: c.phone,
+              phone: c.phone || parsedCAddr.phone,
               address: c.address,
+              streetAddress: c.streetAddress || parsedCAddr.streetAddress || parsedCAddr.endereco || (!String(c.address || '').trim().startsWith('{') ? c.address : undefined),
+              cep: c.cep || parsedCAddr.cep,
+              city: c.city || parsedCAddr.city,
+              state: c.state || parsedCAddr.state,
+              companyName: c.companyName || parsedCAddr.companyName,
+              companyLogo: c.companyLogo || parsedCAddr.companyLogo,
+              cnpj: c.cnpj || parsedCAddr.cnpj,
+              razaoSocial: c.razaoSocial || parsedCAddr.razaoSocial,
               approved: c.approved !== false,
               canRead: c.canRead !== undefined ? c.canRead : true,
               canEdit: c.canEdit !== undefined ? c.canEdit : false,
@@ -1755,12 +1836,25 @@ export const MockService = {
                   ? data.billingAuthorizationService 
                   : (profileObj.billingAuthorizationService || profileObj.billing_authorization_service || ''));
 
+          let parsedDataAddr: any = {};
+          if (typeof data.address === 'string' && data.address.trim().startsWith('{')) {
+              try { parsedDataAddr = JSON.parse(data.address); } catch {}
+          }
+
           profileObj = {
               ...profileObj,
               name: data.name !== undefined ? data.name : profileObj.name,
               email: data.email !== undefined ? data.email : profileObj.email,
               phone: data.phone !== undefined ? data.phone : profileObj.phone,
               address: data.address !== undefined ? data.address : profileObj.address,
+              streetAddress: data.streetAddress !== undefined ? data.streetAddress : (parsedDataAddr.streetAddress !== undefined ? parsedDataAddr.streetAddress : (typeof data.address === 'string' && !data.address.trim().startsWith('{') ? data.address : profileObj.streetAddress)),
+              cep: data.cep !== undefined ? data.cep : (parsedDataAddr.cep !== undefined ? parsedDataAddr.cep : profileObj.cep),
+              city: data.city !== undefined ? data.city : (parsedDataAddr.city !== undefined ? parsedDataAddr.city : profileObj.city),
+              state: data.state !== undefined ? data.state : (parsedDataAddr.state !== undefined ? parsedDataAddr.state : profileObj.state),
+              companyName: data.companyName !== undefined ? data.companyName : (parsedDataAddr.companyName !== undefined ? parsedDataAddr.companyName : profileObj.companyName),
+              razaoSocial: data.razaoSocial !== undefined ? data.razaoSocial : (parsedDataAddr.razaoSocial !== undefined ? parsedDataAddr.razaoSocial : profileObj.razaoSocial),
+              cnpj: data.cnpj !== undefined ? data.cnpj : (parsedDataAddr.cnpj !== undefined ? parsedDataAddr.cnpj : profileObj.cnpj),
+              companyLogo: data.companyLogo !== undefined ? data.companyLogo : (parsedDataAddr.companyLogo !== undefined ? parsedDataAddr.companyLogo : profileObj.companyLogo),
               neighborhoodId: data.neighborhood_id !== undefined ? (data.neighborhood_id || undefined) : profileObj.neighborhoodId,
               primaryNeighborhoodId: data.primary_neighborhood_id !== undefined ? (data.primary_neighborhood_id || undefined) : profileObj.primaryNeighborhoodId,
               secondaryNeighborhoodId: data.secondary_neighborhood_id !== undefined ? (data.secondary_neighborhood_id || undefined) : profileObj.secondaryNeighborhoodId,
@@ -1809,6 +1903,13 @@ export const MockService = {
       delete dbPayload.recordingDays;
       delete dbPayload.billingAuthorizationService;
       delete dbPayload.additionalNeighborhoodIds;
+      delete dbPayload.streetAddress;
+      delete dbPayload.cep;
+      delete dbPayload.companyName;
+      delete dbPayload.razaoSocial;
+      delete dbPayload.cnpj;
+      delete dbPayload.companyLogo;
+      delete dbPayload.password;
 
       try {
           const { error } = await supabase.from('profiles').update(dbPayload).eq('id', safeId);

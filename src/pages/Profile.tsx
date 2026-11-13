@@ -192,6 +192,68 @@ const Profile: React.FC = () => {
   const [brandCpf, setBrandCpf] = useState('');
   const [brandEmail, setBrandEmail] = useState('');
   const [brandCustomRgb, setBrandCustomRgb] = useState('0, 255, 102');
+  const [brandCep, setBrandCep] = useState('');
+  const [brandAddress, setBrandAddress] = useState('');
+  const [brandCity, setBrandCity] = useState('');
+  const [brandState, setBrandState] = useState('');
+  const [lookingUpCep, setLookingUpCep] = useState(false);
+
+  const formatCepMask = (val: string) => {
+    const digits = (val || '').replace(/\D/g, '').slice(0, 8);
+    if (digits.length > 5) return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+    return digits;
+  };
+
+  const extractAddressParts = (u: any) => {
+    let parsed: Record<string, any> = {};
+    if (u?.address && typeof u.address === 'string' && u.address.trim().startsWith('{')) {
+      try {
+        parsed = JSON.parse(u.address);
+      } catch (_) {}
+    }
+    const rawPlainAddress =
+      u?.address && typeof u.address === 'string' && !u.address.trim().startsWith('{')
+        ? u.address.trim()
+        : '';
+    return {
+      parsed,
+      streetAddress: (u?.streetAddress || parsed.streetAddress || rawPlainAddress || '').trim(),
+      cep: (u?.cep || parsed.cep || '').trim(),
+      city: (u?.city || parsed.city || '').trim(),
+      state: (u?.state || parsed.state || '').trim(),
+    };
+  };
+
+  const handleLookupCep = async (rawCep: string) => {
+    const digits = rawCep.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+    setLookingUpCep(true);
+    try {
+      const resp = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (!data.erro) {
+          const formattedStreet = [data.logradouro, data.bairro].filter(Boolean).join(', ');
+          if (formattedStreet) {
+            setBrandAddress(prev => prev || formattedStreet);
+            setFormData(prev => ({ ...prev, address: prev.address || formattedStreet }));
+          }
+          if (data.localidade) {
+            setBrandCity(data.localidade);
+            setFormData(prev => ({ ...prev, city: data.localidade }));
+          }
+          if (data.uf) {
+            const uf = String(data.uf).toUpperCase().slice(0, 2);
+            setBrandState(uf);
+            setFormData(prev => ({ ...prev, state: uf }));
+          }
+        }
+      }
+    } catch (_) {
+    } finally {
+      setLookingUpCep(false);
+    }
+  };
 
   // SINGLE PLAN & CAMERA RENTAL & RECORDING DAYS STATES (PULLED INTO CONTRACT)
   const [singlePlanPrice, setSinglePlanPrice] = useState('49,90');
@@ -293,26 +355,31 @@ const Profile: React.FC = () => {
 
   useEffect(() => {
     if (user && !savingBranding) {
-      setBrandName(user.companyName || '');
-      setBrandLogo(user.companyLogo || '');
+      const addrParts = extractAddressParts(user);
+      setBrandName(user.companyName || addrParts.parsed.companyName || '');
+      setBrandLogo(user.companyLogo || addrParts.parsed.companyLogo || '');
       setMpPubKey(user.mpPublicKey || '');
       setMpAccToken(user.mpAccessToken || '');
-      setSplitPct(user.splitPercentage || 70);
-      setBrandCnpj(user.cnpj || '');
-      setBrandRazaoSocial(user.razaoSocial || '');
-      setBrandPhone(user.phone || '');
-      setBrandBanco(user.banco || '');
-      setBrandPix(user.pix || '');
-      setBrandCpf(user.cpf || '');
+      setSplitPct(user.splitPercentage || addrParts.parsed.splitPercentage || 70);
+      setBrandCnpj(user.cnpj || addrParts.parsed.cnpj || '');
+      setBrandRazaoSocial(user.razaoSocial || addrParts.parsed.razaoSocial || '');
+      setBrandPhone(user.phone || addrParts.parsed.phone || '');
+      setBrandBanco(user.banco || addrParts.parsed.banco || '');
+      setBrandPix(user.pix || addrParts.parsed.pix || '');
+      setBrandCpf(user.cpf || addrParts.parsed.cpf || '');
       setBrandEmail(user.email || '');
-      setBrandCustomRgb(user.customRgb || '0, 255, 102');
+      setBrandCustomRgb(user.customRgb || addrParts.parsed.customRgb || '0, 255, 102');
+      setBrandCep(addrParts.cep);
+      setBrandAddress(addrParts.streetAddress);
+      setBrandCity(addrParts.city);
+      setBrandState(addrParts.state);
 
-      let initPrice = user.singlePlanPrice !== undefined ? String(user.singlePlanPrice) : '';
-      let initRental = user.hasCameraRental !== undefined ? Boolean(user.hasCameraRental) : false;
-      let initDetails = user.cameraRentalDetails || '';
-      let initRecordingDays = user.recordingDays !== undefined ? Number(user.recordingDays) : 7;
-      let initCustomClause = user.customClause || '';
-      let initBillingAuth = user.billingAuthorizationService || (user as any).billing_authorization_service || '';
+      let initPrice = user.singlePlanPrice !== undefined ? String(user.singlePlanPrice) : (addrParts.parsed.singlePlanPrice !== undefined ? String(addrParts.parsed.singlePlanPrice) : '');
+      let initRental = user.hasCameraRental !== undefined ? Boolean(user.hasCameraRental) : Boolean(addrParts.parsed.hasCameraRental);
+      let initDetails = user.cameraRentalDetails || addrParts.parsed.cameraRentalDetails || '';
+      let initRecordingDays = user.recordingDays !== undefined ? Number(user.recordingDays) : (addrParts.parsed.recordingDays !== undefined ? Number(addrParts.parsed.recordingDays) : 7);
+      let initCustomClause = user.customClause || addrParts.parsed.customClause || '';
+      let initBillingAuth = user.billingAuthorizationService || (user as any).billing_authorization_service || addrParts.parsed.billingAuthorizationService || '';
 
       if (user.id && typeof window !== 'undefined') {
         try {
@@ -358,8 +425,15 @@ const Profile: React.FC = () => {
       setSavingBranding(true);
       setBrandingStatusMsg('');
       try {
-          // Serialize branding details inside standard 'address' column as JSON string to maintain schema consistency
+          const existingParts = extractAddressParts(user);
+          const cleanStreet = (brandAddress || formData.address || existingParts.streetAddress || '').trim();
+          const cleanCep = (brandCep || formData.cep || existingParts.cep || '').trim();
+          const cleanCity = (brandCity || formData.city || existingParts.city || '').trim();
+          const cleanState = (brandState || formData.state || existingParts.state || '').trim().toUpperCase();
+
+          // Serialize branding details inside standard 'address' column as JSON string while preserving address & CEP
           const serializedAddress = JSON.stringify({
+              ...existingParts.parsed,
               companyName: brandName,
               companyLogo: brandLogo,
               splitPercentage: Number(splitPct),
@@ -374,11 +448,21 @@ const Profile: React.FC = () => {
               hasCameraRental: Boolean(hasCameraRental),
               cameraRentalDetails: cameraRentalDetails.trim(),
               recordingDays: Number(recordingDays),
-              customClause: customClause.trim()
+              customClause: customClause.trim(),
+              billingAuthorizationService: billingAuthorizationService.trim(),
+              billing_authorization_service: billingAuthorizationService.trim(),
+              streetAddress: cleanStreet,
+              cep: cleanCep,
+              city: cleanCity,
+              state: cleanState
           });
 
           await updateProfile({
               address: serializedAddress,
+              streetAddress: cleanStreet,
+              cep: cleanCep,
+              city: cleanCity || undefined,
+              state: cleanState || undefined,
               mpPublicKey: mpPubKey,
               mpAccessToken: mpAccToken,
               companyName: brandName,
@@ -416,7 +500,18 @@ const Profile: React.FC = () => {
               } catch (_) {}
           }
 
-          setFormData(prev => ({ ...prev, phone: brandPhone }));
+          setBrandAddress(cleanStreet);
+          setBrandCep(cleanCep);
+          setBrandCity(cleanCity);
+          setBrandState(cleanState);
+          setFormData(prev => ({
+            ...prev,
+            phone: brandPhone,
+            address: cleanStreet,
+            cep: cleanCep,
+            city: cleanCity,
+            state: cleanState
+          }));
 
           if (user?.id) {
               try {
@@ -467,6 +562,7 @@ const Profile: React.FC = () => {
     email: '',
     lat: '',
     lng: '',
+    cep: '',
     address: '',
     city: '',
     state: '',
@@ -511,15 +607,17 @@ const Profile: React.FC = () => {
   // Carrega dados iniciais do usuário
   useEffect(() => {
     if (user && !saving) { // Não sincroniza se estiver salvando para evitar pulos no input
+        const addrParts = extractAddressParts(user);
         setFormData({
             name: user.name || '',
             email: user.email || '',
             lat: user.lat?.toString() || '',
             lng: user.lng?.toString() || '',
-            address: user.address || '',
-            city: user.city || '',
-            state: user.state || '',
-            phone: user.phone || '',
+            cep: addrParts.cep,
+            address: addrParts.streetAddress,
+            city: addrParts.city,
+            state: addrParts.state,
+            phone: user.phone || addrParts.parsed.phone || '',
             photoUrl: user.photoUrl || ''
         });
     }
@@ -560,24 +658,38 @@ const Profile: React.FC = () => {
 
     try {
         const cleanPhone = formData.phone.trim() || undefined;
-        let finalAddress = formData.address.trim() || undefined;
+        const existingParts = extractAddressParts(user);
+        const rawFormStreet = formData.address.trim();
+        const cleanStreet = (!rawFormStreet.startsWith('{') ? rawFormStreet : existingParts.streetAddress).trim();
+        const cleanCep = formData.cep.trim();
+        const cleanCity = formData.city.trim();
+        const cleanState = formData.state.trim().toUpperCase();
+        let finalAddress: string | undefined = cleanStreet || undefined;
 
-        if (isIntegrator && (brandName || brandLogo || (user?.address && user.address.trim().startsWith('{')) || brandCustomRgb || singlePlanPrice)) {
+        if (isIntegrator) {
             finalAddress = JSON.stringify({
-                companyName: brandName || user?.companyName,
-                companyLogo: brandLogo || user?.companyLogo,
+                ...existingParts.parsed,
+                companyName: brandName || user?.companyName || existingParts.parsed.companyName,
+                companyLogo: brandLogo || user?.companyLogo || existingParts.parsed.companyLogo,
                 splitPercentage: Number(splitPct),
-                cnpj: brandCnpj,
-                razaoSocial: brandRazaoSocial,
-                banco: brandBanco,
-                pix: brandPix,
-                cpf: brandCpf,
-                phone: cleanPhone || brandPhone,
+                cnpj: brandCnpj || existingParts.parsed.cnpj,
+                razaoSocial: brandRazaoSocial || existingParts.parsed.razaoSocial,
+                banco: brandBanco || existingParts.parsed.banco,
+                pix: brandPix || existingParts.parsed.pix,
+                cpf: brandCpf || existingParts.parsed.cpf,
+                phone: cleanPhone || brandPhone || existingParts.parsed.phone,
                 customRgb: brandCustomRgb,
                 singlePlanPrice: singlePlanPrice.trim() || '49,90',
                 hasCameraRental: Boolean(hasCameraRental),
                 cameraRentalDetails: cameraRentalDetails.trim(),
-                streetAddress: !formData.address.trim().startsWith('{') ? formData.address.trim() : undefined
+                recordingDays: Number(recordingDays),
+                customClause: customClause.trim(),
+                billingAuthorizationService: billingAuthorizationService.trim(),
+                billing_authorization_service: billingAuthorizationService.trim(),
+                streetAddress: cleanStreet,
+                cep: cleanCep,
+                city: cleanCity,
+                state: cleanState
             });
         }
 
@@ -585,20 +697,29 @@ const Profile: React.FC = () => {
             name: formData.name.trim(),
             phone: cleanPhone,
             address: finalAddress,
-            city: formData.city.trim() || undefined,
-            state: formData.state.trim() || undefined,
+            streetAddress: cleanStreet,
+            cep: cleanCep,
+            city: cleanCity || undefined,
+            state: cleanState || undefined,
             photoUrl: formData.photoUrl || undefined,
             lat: parsedLat,
             lng: parsedLng,
             customRgb: isIntegrator ? brandCustomRgb : undefined,
             singlePlanPrice: isIntegrator ? (singlePlanPrice.trim() || '49,90') : undefined,
             hasCameraRental: isIntegrator ? Boolean(hasCameraRental) : undefined,
-            cameraRentalDetails: isIntegrator ? cameraRentalDetails.trim() : undefined
-        });
+            cameraRentalDetails: isIntegrator ? cameraRentalDetails.trim() : undefined,
+            recordingDays: isIntegrator ? Number(recordingDays) : undefined,
+            customClause: isIntegrator ? customClause.trim() : undefined,
+            billingAuthorizationService: isIntegrator ? billingAuthorizationService.trim() : undefined
+        } as any);
 
         if (cleanPhone) {
             setBrandPhone(cleanPhone);
         }
+        setBrandAddress(cleanStreet);
+        setBrandCep(cleanCep);
+        setBrandCity(cleanCity);
+        setBrandState(cleanState);
         
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 4000);
@@ -769,27 +890,57 @@ const Profile: React.FC = () => {
                             />
                         </div>
 
-                        <div className="mb-6">
-                            <Input 
-                                label="Endereço (Rua, Número, Apto)"
-                                placeholder="Ex: Rua das Flores, 123"
-                                value={formData.address}
-                                onChange={(e) => setFormData({...formData, address: e.target.value})}
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div>
+                                <Input 
+                                    label={lookingUpCep ? "CEP (buscando...)" : "CEP"}
+                                    placeholder="Ex: 88101-000"
+                                    value={formData.cep}
+                                    maxLength={9}
+                                    onChange={(e) => {
+                                        const masked = formatCepMask(e.target.value);
+                                        setFormData(prev => ({ ...prev, cep: masked }));
+                                        setBrandCep(masked);
+                                        if (masked.replace(/\D/g, '').length === 8) {
+                                            handleLookupCep(masked);
+                                        }
+                                    }}
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <Input 
+                                    label="Endereço (Rua, Número, Bairro/Sala)"
+                                    placeholder="Ex: Rua das Flores, 123, Centro"
+                                    value={formData.address}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        setFormData(prev => ({ ...prev, address: val }));
+                                        setBrandAddress(val);
+                                    }}
+                                />
+                            </div>
                         </div>
                         
                         <div className="grid grid-cols-2 gap-6 mb-6">
                              <Input 
                                 label="Cidade"
                                 value={formData.city}
-                                onChange={(e) => setFormData({...formData, city: e.target.value})}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setFormData(prev => ({ ...prev, city: val }));
+                                    setBrandCity(val);
+                                }}
                             />
                              <Input 
                                 label="Estado (UF)"
                                 placeholder="SC"
                                 value={formData.state}
                                 maxLength={2}
-                                onChange={(e) => setFormData({...formData, state: e.target.value.toUpperCase()})}
+                                onChange={(e) => {
+                                    const val = e.target.value.toUpperCase();
+                                    setFormData(prev => ({ ...prev, state: val }));
+                                    setBrandState(val);
+                                }}
                             />
                         </div>
                     </div>
@@ -1406,6 +1557,66 @@ const Profile: React.FC = () => {
                                         value={brandPix} 
                                         onChange={e => setBrandPix(e.target.value)} 
                                     />
+                                </div>
+
+                                {/* CORPORATE ADDRESS & CEP */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 pt-2">
+                                    <div>
+                                        <Input 
+                                            label={lookingUpCep ? "CEP (buscando...)" : "CEP da Empresa"}
+                                            placeholder="Ex: 88101-000"
+                                            maxLength={9}
+                                            value={brandCep}
+                                            onChange={e => {
+                                                const masked = formatCepMask(e.target.value);
+                                                setBrandCep(masked);
+                                                setFormData(prev => ({ ...prev, cep: masked }));
+                                                if (masked.replace(/\D/g, '').length === 8) {
+                                                    handleLookupCep(masked);
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-3">
+                                        <Input 
+                                            label="Endereço Comercial Completo (Rua, Nº, Sala, Bairro)"
+                                            placeholder="Ex: Avenida Josué di Bernardi, 185, Sala 27, Campinas"
+                                            value={brandAddress}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setBrandAddress(val);
+                                                setFormData(prev => ({ ...prev, address: val }));
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="md:col-span-2">
+                                        <Input 
+                                            label="Cidade da Integradora"
+                                            placeholder="Ex: São José"
+                                            value={brandCity}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setBrandCity(val);
+                                                setFormData(prev => ({ ...prev, city: val }));
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <Input 
+                                            label="Estado (UF)"
+                                            placeholder="SC"
+                                            maxLength={2}
+                                            value={brandState}
+                                            onChange={e => {
+                                                const val = e.target.value.toUpperCase();
+                                                setBrandState(val);
+                                                setFormData(prev => ({ ...prev, state: val }));
+                                            }}
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* CUSTOM CONTRACT CLAUSE FOR INTEGRATOR */}

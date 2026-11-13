@@ -24,6 +24,8 @@ export interface User {
   lng?: number;
   approved?: boolean;
   address?: string;
+  streetAddress?: string;
+  cep?: string;
   city?: string;
   state?: string;
   phone?: string;

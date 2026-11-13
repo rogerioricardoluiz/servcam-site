@@ -45,6 +45,26 @@ const ImagePolicyPage: React.FC = () => {
         return;
       }
 
+      const formatIntegratorAddress = (u: any): string => {
+        let parsed: Record<string, any> = {};
+        if (u?.address && typeof u.address === 'string' && u.address.trim().startsWith('{')) {
+          try { parsed = JSON.parse(u.address); } catch (_) {}
+        }
+        const rawPlain = u?.address && typeof u.address === 'string' && !u.address.trim().startsWith('{') ? u.address.trim() : '';
+        const street = (u?.streetAddress || parsed.streetAddress || rawPlain || '').trim();
+        const city = (u?.city || parsed.city || '').trim();
+        const state = (u?.state || parsed.state || '').trim();
+        const cep = (u?.cep || parsed.cep || '').trim();
+        const parts: string[] = [];
+        if (street) parts.push(street);
+        if (city && state) parts.push(`${city} – ${state}`);
+        else if (city || state) parts.push(city || state);
+        if (cep) parts.push(`CEP: ${cep}`);
+        return parts.length > 0
+          ? parts.join(', ')
+          : 'Avenida Josué di Bernardi, nº 185, sala 27, Campinas, São José – SC';
+      };
+
       // 2. If logged in as an Integrator: Use their own company credentials (unless it is Alien)
       if (user?.role === UserRole.INTEGRATOR) {
         const intName = user.companyName || user.razaoSocial || user.name || '';
@@ -55,7 +75,7 @@ const ImagePolicyPage: React.FC = () => {
         setIntegratorDetails({
           name: intName || 'Empresa Integradora Parceira',
           cnpj: user.cnpj || '51.482.661/0001-31',
-          address: user.address || 'Avenida Josué di Bernardi, nº 185, sala 27, Campinas, São José – SC'
+          address: formatIntegratorAddress(user)
         });
         return;
       }
@@ -84,7 +104,7 @@ const ImagePolicyPage: React.FC = () => {
               setIntegratorDetails({
                 name: partnerName,
                 cnpj: matched.cnpj || '51.482.661/0001-31',
-                address: matched.address || 'Avenida Josué di Bernardi, nº 185, sala 27, Campinas, São José – SC'
+                address: formatIntegratorAddress(matched)
               });
               return;
             }
